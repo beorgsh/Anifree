@@ -80,16 +80,28 @@ const PlayerPage: React.FC = () => {
   const videoUrl = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.title.romaji, episode.episode) : '';
 
   const handleNext = () => {
-    // Need to get the full list of episodes to find the next one
-    // The current logic only has 'episode' state, not the full list.
-    // I need to refactor to keep the full list in state or fetch it again.
-    // Actually, I can just navigate to the next episode number if I assume they are sequential.
     const nextEpNum = parseInt(epNum!) + 1;
     navigate(`/anime/${id}/watch/${nextEpNum}`);
   };
 
+  const handleInteraction = async () => {
+    if (window.innerWidth <= 768) {
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+        const orientation = screen.orientation as any;
+        if (orientation && orientation.lock) {
+          await orientation.lock('landscape');
+        }
+      } catch (e) {
+        console.warn('Fullscreen/Orientation lock failed:', e);
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col" onClick={handleInteraction}>
       <div className="flex-1 w-full h-full">
         {videoUrl ? (
           <Player 

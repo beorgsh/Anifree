@@ -18,6 +18,17 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
 
     const customLayers = [];
     
+    // Swipe blocker layer to prevent seek on swipe
+    customLayers.push({
+      name: 'swipe-blocker',
+      html: '<div style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;"></div>',
+      mounted: function ($el: HTMLElement) {
+        $el.addEventListener('touchmove', (e) => {
+          e.stopPropagation();
+        }, { passive: false });
+      }
+    });
+
     // Top Bar Layer
     if (onBack || option.title || onNext) {
       customLayers.push({
@@ -55,12 +66,14 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       container: artRef.current,
       theme: '#ffffff',
       fullscreen: true,
-      fullscreenWeb: true,
+      fullscreenWeb: false,
       autoSize: true,
-      playbackRate: true,
-      aspectRatio: true,
-      setting: true,
-      pip: true,
+      playbackRate: false,
+      aspectRatio: false,
+      setting: false,
+      pip: false,
+      fastForward: false,
+      miniProgressBar: false,
       autoOrientation: true,
       autoplay: true,
       lock: true,
