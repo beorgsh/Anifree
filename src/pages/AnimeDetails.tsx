@@ -98,18 +98,19 @@ const AnimeDetails: React.FC = () => {
       const proxies = [
         `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}`
       ];
 
       // Create a timeout promise to fail fast if proxies are slow
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Proxy timeout')), 10000) // Increased timeout to 10s
+        setTimeout(() => reject(new Error('Proxy timeout')), 15000) // Increased timeout to 15s
       );
 
       const fetchPromises = proxies.map(async (proxyUrl) => {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased per-request timeout to 8s
+          const timeoutId = setTimeout(() => controller.abort(), 12000); // Increased per-request timeout to 12s
           
           const response = await fetch(proxyUrl, { signal: controller.signal });
           clearTimeout(timeoutId);
@@ -172,22 +173,29 @@ const AnimeDetails: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen pb-20 animate-pulse">
+        {/* Banner Placeholder */}
         <div className="h-[30vh] sm:h-[40vh] bg-white/5 w-full"></div>
+        
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-32 relative z-10">
-          <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
-            <div className="w-32 sm:w-48 md:w-64 aspect-[2/3] bg-white/10 rounded-lg shadow-2xl flex-shrink-0 mx-auto md:mx-0"></div>
-            <div className="flex-1 pt-4 sm:pt-0 space-y-4 text-center md:text-left">
-              <div className="h-8 sm:h-10 bg-white/10 w-3/4 rounded mx-auto md:mx-0"></div>
-              <div className="h-4 sm:h-6 bg-white/10 w-1/2 rounded mx-auto md:mx-0"></div>
-              <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
-                <div className="h-6 w-16 bg-white/10 rounded"></div>
-                <div className="h-6 w-16 bg-white/10 rounded"></div>
-                <div className="h-6 w-16 bg-white/10 rounded"></div>
+          {/* Tabs Placeholder */}
+          <div className="h-12 bg-white/10 w-full rounded mb-8"></div>
+
+          {/* Header Placeholder (Poster + Title) */}
+          <div className="flex flex-row gap-4 sm:gap-8 mb-8">
+            <div className="w-28 sm:w-48 aspect-[2/3] bg-white/10 rounded-lg shadow-2xl flex-shrink-0"></div>
+            <div className="flex-1 pt-4 sm:pt-0 space-y-4 text-left">
+              <div className="h-6 sm:h-10 bg-white/10 w-3/4 rounded"></div>
+              <div className="h-4 sm:h-6 bg-white/10 w-1/2 rounded"></div>
+              <div className="flex flex-wrap justify-start gap-2 mt-4">
+                <div className="h-5 w-12 bg-white/10 rounded"></div>
+                <div className="h-5 w-12 bg-white/10 rounded"></div>
+                <div className="h-5 w-12 bg-white/10 rounded"></div>
               </div>
             </div>
           </div>
-          <div className="mt-10 h-10 bg-white/10 w-full rounded"></div>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+
+          {/* Content Placeholder */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-4">
               <div className="h-6 bg-white/10 w-1/4 rounded"></div>
               <div className="h-4 bg-white/10 w-full rounded"></div>
@@ -229,116 +237,67 @@ const AnimeDetails: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen pb-20"
+      className="min-h-screen pb-10 relative"
     >
       <button
         onClick={() => navigate(-1)}
-        className="absolute top-4 left-4 z-50 p-2 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
+        className="absolute top-4 left-4 z-[60] p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"
+        aria-label="Go back"
       >
         <ChevronLeft size={24} />
       </button>
 
-      {/* Banner / Player Area */}
-      <div className={`relative w-full bg-black transition-all duration-300 ${activeTab === 'episodes' ? 'w-full' : 'h-[30vh] sm:h-[40vh] overflow-hidden'}`}>
-        {activeTab === 'episodes' ? (
-          <div className="w-full mx-auto bg-black">
-            <div className="w-full aspect-video max-h-[75vh] mx-auto relative">
-              {videoUrl ? (
-                <Player 
-                  key={videoUrl}
-                  option={{
-                    url: videoUrl,
-                    title: `${info.name} - Episode ${selectedEpisode.episode}`,
-                    poster: selectedEpisode.image || info.poster,
-                    fullscreen: true,
-                  }}
-                  className="w-full h-full"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-anilist-text p-4 text-center border-b border-white/10">
-                  <Play size={48} className="mb-4 opacity-50" />
-                  <p className="text-lg font-bold">Select an episode to start watching</p>
-                  <p className="text-sm opacity-70 mt-2">Click on any episode from the list below</p>
-                  <img 
-                    src={info.poster} 
-                    alt={info.name}
-                    className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm -z-10"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <>
-            <img 
-              src={info.poster} 
-              alt={info.name}
-              className="h-full w-full object-cover opacity-40 blur-xs"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg to-transparent"></div>
-          </>
-        )}
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-32 relative z-10">
-        {/* Right Column: Info - Only show in overview */}
-        {activeTab === 'overview' && (
-          <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
-            {/* Left Column: Poster */}
-            <div className="w-32 sm:w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0 -mt-20 sm:-mt-32 relative z-20">
-              <img 
-                src={info.poster} 
-                alt={info.name}
-                className="w-full rounded-lg shadow-2xl"
-                referrerPolicy="no-referrer"
+      {/* Player Area (Only visible when watching) */}
+      {activeTab === 'episodes' ? (
+        <div className="w-full bg-black">
+          <div className="w-full aspect-video max-h-[75vh] mx-auto relative">
+            {videoUrl ? (
+              <Player 
+                key={videoUrl}
+                option={{
+                  url: videoUrl,
+                  title: `${info.name} - Episode ${selectedEpisode?.episode || ''}`,
+                  poster: selectedEpisode?.image || info.poster,
+                  fullscreen: true,
+                }}
+                className="w-full h-full"
               />
-            </div>
-
-            {/* Right Column: Info */}
-            <div className="flex-1 flex flex-col justify-end pt-4 sm:pt-0 text-center md:text-left">
-              <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading leading-tight">{info.name}</h1>
-              {moreInfo.japanese && moreInfo.japanese !== info.name && (
-                <h2 className="text-sm sm:text-base text-anilist-text mt-1">{moreInfo.japanese}</h2>
-              )}
-              
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 mt-4 text-xs sm:text-sm text-anilist-text font-medium">
-                <div className="flex items-center gap-1">
-                  <Star size={14} className="text-yellow-400" fill="currentColor" />
-                  <span>{moreInfo.malscore || '?'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar size={14} />
-                  <span>{moreInfo.premiered || 'TBA'}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Tv size={14} />
-                  <span>{info.stats?.type || 'TV'}</span>
-                </div>
-                <div className="px-2 py-0.5 rounded bg-white/10 text-white">
-                  {moreInfo.status || 'Unknown'}
-                </div>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-anilist-text p-4 text-center border-b border-white/10">
+                <Play size={48} className="mb-4 opacity-50" />
+                <p className="text-lg font-bold">Select an episode to start watching</p>
+                <p className="text-sm opacity-70 mt-2">Click on any episode from the list below</p>
+                <img 
+                  src={info.poster} 
+                  alt={info.name}
+                  className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm -z-10"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-
-              <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
-                {moreInfo.genres?.map((genre: string) => (
-                  <span key={genre} className="rounded-full bg-white/5 px-3 py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading">
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+      ) : (
+        /* Banner Cover Image */
+        <div className="relative w-full h-[30vh] sm:h-[40vh] overflow-hidden">
+          <img 
+            src={info.poster} 
+            alt={info.name}
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg via-transparent to-transparent"></div>
+        </div>
+      )}
 
-        {/* Tabs - Sticky */}
-        <div className={`mt-16 sm:mt-10 border-b border-white/10 flex overflow-x-auto hide-scrollbar sticky top-0 z-30 bg-anilist-bg/95 backdrop-blur-sm ${activeTab === 'episodes' ? 'mt-0 sm:mt-0 pt-4' : ''}`}>
+      {/* Sticky Tabs Header (Full Width) */}
+      <div className={`sticky top-0 z-30 w-full bg-anilist-bg/95 backdrop-blur-md border-b border-white/10 ${activeTab === 'episodes' ? '' : '-mt-10 sm:-mt-20'}`}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex overflow-x-auto hide-scrollbar">
           {['overview', 'episodes', 'seasons', 'recommended'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 sm:px-6 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
                 activeTab === tab 
                   ? 'text-anilist-accent border-b-2 border-anilist-accent' 
                   : 'text-anilist-text hover:text-anilist-heading'
@@ -348,42 +307,117 @@ const AnimeDetails: React.FC = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
 
         {/* Tab Content */}
-        <div className="mt-6 sm:mt-8">
+        <div className="mt-8">
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2 space-y-4">
-                <h3 className="text-lg font-bold text-anilist-heading">Synopsis</h3>
-                <p className="text-xs sm:text-sm text-anilist-text leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanDescription }} />
+            <div className="space-y-8">
+              {/* Top Section: Poster & Main Info */}
+              <div className="flex flex-row gap-4 sm:gap-8">
+                {/* Left Column: Poster */}
+                <div className="w-28 sm:w-48 flex-shrink-0">
+                  <div className="w-full aspect-[2/3] rounded-lg shadow-2xl overflow-hidden">
+                    <img 
+                      src={info.poster} 
+                      alt={info.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                </div>
+
+                {/* Right Column: Info */}
+                <div className="flex-1 flex flex-col justify-end text-left pb-2">
+                  <h1 className="text-xl sm:text-4xl font-black text-anilist-heading leading-tight line-clamp-2 sm:line-clamp-none">{info.name}</h1>
+                  
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm text-anilist-text font-medium">
+                    <div className="flex items-center gap-1">
+                      <Star size={14} className="text-yellow-400" fill="currentColor" />
+                      <span>{moreInfo.malscore || '?'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      <span>{moreInfo.premiered || 'TBA'}</span>
+                    </div>
+                    <div className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] sm:text-xs">
+                      {moreInfo.status || 'Unknown'}
+                    </div>
+                    <div className="px-2 py-0.5 rounded bg-anilist-accent text-black text-[10px] sm:text-xs font-bold">
+                      {info.stats?.quality || 'HD'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {moreInfo.genres?.slice(0, 3).map((genre: string) => (
+                      <span key={genre} className="rounded-full bg-white/5 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('episodes');
+                      if (episodes.length > 0) handleEpisodeClick(episodes[0]);
+                    }}
+                    className="mt-4 w-fit flex items-center gap-2 bg-anilist-accent text-black px-6 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                  >
+                    <Play size={16} fill="currentColor" />
+                    Watch Now
+                  </button>
+                </div>
               </div>
-              <div className="space-y-4 bg-white/5 p-4 rounded-lg border border-white/10 h-fit">
-                <h3 className="text-sm font-bold text-anilist-heading uppercase tracking-wider">Information</h3>
-                <div className="space-y-3 text-xs sm:text-sm">
-                  <div>
-                    <span className="text-anilist-text block">Format</span>
-                    <span className="text-anilist-heading">{info.stats?.type || 'Unknown'}</span>
+
+              <div className="flex flex-col md:flex-row gap-8">
+                {/* Left Column: Info Panel */}
+                <div className="w-full md:w-64 flex-shrink-0 space-y-6">
+                  <div className="bg-white/5 p-5 rounded-xl border border-white/10 space-y-4">
+                    <h3 className="font-bold text-anilist-heading uppercase tracking-wider text-sm border-b border-white/10 pb-2">Information</h3>
+                    <div className="space-y-3 text-xs sm:text-sm">
+                      <div>
+                        <span className="text-anilist-text block text-xs">Format</span>
+                        <span className="text-anilist-heading font-medium">{info.stats?.type || 'Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-anilist-text block text-xs">Episodes</span>
+                        <span className="text-anilist-heading font-medium">{info.stats?.episodes?.sub || 'Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-anilist-text block text-xs">Studios</span>
+                        <span className="text-anilist-heading font-medium">{moreInfo.studios || 'Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-anilist-text block text-xs">Status</span>
+                        <span className="text-anilist-heading font-medium">{moreInfo.status || 'Unknown'}</span>
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                {/* Right Column: Details */}
+                <div className="flex-1 space-y-6 text-center md:text-left">
                   <div>
-                    <span className="text-anilist-text block">Episodes</span>
-                    <span className="text-anilist-heading">{info.stats?.episodes?.sub || 'Unknown'}</span>
+                    <h3 className="text-xl font-bold text-anilist-heading mb-2">Synopsis</h3>
+                    <p className="text-sm text-anilist-text leading-relaxed text-justify md:text-left" dangerouslySetInnerHTML={{ __html: cleanDescription }} />
                   </div>
-                  <div>
-                    <span className="text-anilist-text block">Episode Duration</span>
-                    <span className="text-anilist-heading">{moreInfo.duration || 'Unknown'}</span>
-                  </div>
-                  <div>
-                    <span className="text-anilist-text block">Status</span>
-                    <span className="text-anilist-heading">{moreInfo.status || 'Unknown'}</span>
-                  </div>
-                  <div>
-                    <span className="text-anilist-text block">Aired</span>
-                    <span className="text-anilist-heading">{moreInfo.aired || 'Unknown'}</span>
-                  </div>
-                  <div>
-                    <span className="text-anilist-text block">Studios</span>
-                    <span className="text-anilist-heading">{moreInfo.studios || 'Unknown'}</span>
-                  </div>
+                  
+                  {moreInfo.trailer && (
+                    <div className="pt-4">
+                      <h3 className="text-xl font-bold text-anilist-heading mb-4">Trailer</h3>
+                      <div className="w-full aspect-video rounded-lg overflow-hidden border border-white/10 bg-black">
+                        <iframe
+                          src={moreInfo.trailer.replace('watch?v=', 'embed/')}
+                          className="w-full h-full"
+                          allowFullScreen
+                          referrerPolicy="no-referrer"
+                          title="Trailer"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -392,106 +426,135 @@ const AnimeDetails: React.FC = () => {
           {activeTab === 'episodes' && (
             <div className="w-full">
               {selectedEpisode && (
-                <div className="mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
-                  <h3 className="text-lg font-bold text-anilist-heading">
+                <div className="mb-6">
+                  <h3 className="text-lg sm:text-xl font-bold text-anilist-heading mb-2">
                     Episode {selectedEpisode.episode}: {selectedEpisode.title || `Episode ${selectedEpisode.episode}`}
                   </h3>
-                  <p className="text-sm text-anilist-text mt-2 line-clamp-2">
+                  <p className="text-xs sm:text-sm text-anilist-text line-clamp-3 leading-relaxed">
                       {cleanDescription}
                   </p>
                 </div>
               )}
 
-              <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                  <h3 className="font-bold text-anilist-heading">Episodes ({episodes.length})</h3>
-                  <span className="text-xs text-anilist-text">Scroll to see more</span>
-                </div>
-                <div className="h-[60vh] overflow-y-auto p-2 custom-scrollbar">
-                  {epLoading ? (
-                    <div className="flex flex-col gap-3">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex gap-3 p-2 animate-pulse">
-                          <div className="w-24 aspect-video rounded bg-white/5" />
-                          <div className="flex-1 space-y-2">
-                            <div className="h-3 w-3/4 bg-white/5 rounded" />
-                            <div className="h-2 w-1/2 bg-white/5 rounded" />
-                          </div>
+              <div className="space-y-1">
+                {epLoading ? (
+                  <div className="flex flex-col gap-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex gap-4 p-4 animate-pulse border-b border-white/5">
+                        <div className="w-32 aspect-video rounded bg-white/5" />
+                        <div className="flex-1 space-y-3">
+                          <div className="h-4 w-3/4 bg-white/5 rounded" />
+                          <div className="h-3 w-1/2 bg-white/5 rounded" />
                         </div>
-                      ))}
-                    </div>
-                  ) : episodes.length > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      {episodes.map((ep, index) => (
-                        <button 
-                          onClick={() => handleEpisodeClick(ep)}
-                          key={ep.id} 
-                          className={`flex gap-3 p-2 rounded-lg transition-colors text-left group ${
-                            selectedEpisode?.id === ep.id 
-                              ? 'bg-white/20 text-white' 
-                              : 'hover:bg-white/10 text-anilist-text hover:text-anilist-heading'
-                          }`}
-                        >
-                          <div className="relative w-24 aspect-video flex-shrink-0 rounded overflow-hidden bg-black/20">
-                            <img 
-                              src={ep.image || info.poster} 
-                              alt={`Ep ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className={`absolute inset-0 flex flex-col items-center justify-center bg-black/60 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                              <Play size={16} fill="currentColor" className="text-white" />
-                              {selectedEpisode?.id === ep.id && <span className="text-[10px] font-bold text-anilist-accent mt-1 uppercase">Playing</span>}
-                            </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : episodes.length > 0 ? (
+                  <div className="flex flex-col">
+                    {episodes.map((ep, index) => (
+                      <button 
+                        onClick={() => handleEpisodeClick(ep)}
+                        key={ep.id} 
+                        className={`flex gap-4 p-4 transition-colors text-left group border-b border-white/5 hover:bg-white/5 ${
+                          selectedEpisode?.id === ep.id ? 'bg-white/5' : ''
+                        }`}
+                      >
+                        <div className="text-xl font-bold text-anilist-text/50 w-8 flex-shrink-0 flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                        <div className="relative w-32 aspect-video flex-shrink-0 rounded overflow-hidden bg-black/20">
+                          <img 
+                            src={ep.image || info.poster} 
+                            alt={`Ep ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className={`absolute inset-0 flex flex-col items-center justify-center bg-black/60 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                            <Play size={20} fill="currentColor" className="text-white" />
                           </div>
-                          <div className="flex flex-col justify-center flex-1 min-w-0">
-                            <h4 className="text-sm font-bold line-clamp-1">
-                              {index + 1}. {ep.title || `Episode ${index + 1}`}
+                          {/* Progress bar simulation (optional) */}
+                          {selectedEpisode?.id === ep.id && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-anilist-accent"></div>
+                          )}
+                        </div>
+                        <div className="flex flex-col justify-center flex-1 min-w-0 py-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <h4 className={`text-sm sm:text-base font-bold line-clamp-1 ${selectedEpisode?.id === ep.id ? 'text-white' : 'text-anilist-heading'}`}>
+                              {ep.title || `Episode ${index + 1}`}
                             </h4>
-                            <span className={`text-[10px] mt-1 ${selectedEpisode?.id === ep.id ? 'text-white/70' : 'text-anilist-text/70'}`}>
+                            <span className="text-xs text-anilist-text whitespace-nowrap">
                               {moreInfo.duration || '24m'}
                             </span>
                           </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-anilist-text text-sm flex flex-col items-center gap-4">
-                      <p>No episodes found.</p>
-                      <button 
-                        onClick={handleRetryEpisodes}
-                        className="bg-anilist-accent text-black px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider hover:scale-105 transition-transform"
-                      >
-                        Retry Loading Episodes
+                          <p className="text-xs text-anilist-text mt-2 line-clamp-2 opacity-70">
+                            {cleanDescription}
+                          </p>
+                        </div>
                       </button>
-                    </div>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-anilist-text text-xs sm:text-sm flex flex-col items-center gap-4">
+                    <p>No episodes found.</p>
+                    <button 
+                      onClick={handleRetryEpisodes}
+                      className="bg-anilist-accent text-black px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider hover:scale-105 transition-transform"
+                    >
+                      Retry Loading Episodes
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {activeTab === 'seasons' && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {seasons.length > 0 ? (
                 seasons.map((season: any) => (
-                  <a 
-                    href={`/anime/${season.id}`}
+                  <div 
+                    onClick={() => {
+                        setAnime(null);
+                        setLoading(true);
+                        navigate(`/anime/${season.id}`);
+                    }}
                     key={season.id}
-                    className={`block p-3 rounded-lg border transition-all ${
-                      season.isCurrent 
-                        ? 'bg-anilist-accent/10 border-anilist-accent text-anilist-accent' 
-                        : 'bg-white/5 border-white/10 text-anilist-text hover:bg-white/10 hover:text-anilist-heading'
+                    className={`relative h-24 sm:h-32 rounded-xl overflow-hidden cursor-pointer group border border-white/10 transition-transform hover:scale-[1.02] ${
+                      season.isCurrent ? 'ring-2 ring-anilist-accent' : ''
                     }`}
                   >
-                    <div className="text-center">
-                      <h4 className="font-bold text-sm truncate">{season.name || season.title}</h4>
-                      <p className="text-xs opacity-70 mt-1">{season.title || season.name}</p>
+                    {/* Background Image with Blur */}
+                    <div className="absolute inset-0">
+                      <img 
+                        src={season.poster || info.poster} 
+                        alt={season.name || season.title}
+                        className="w-full h-full object-cover blur-sm opacity-60 group-hover:opacity-80 transition-opacity"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors"></div>
                     </div>
-                  </a>
+
+                    {/* Content Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-between p-4 sm:p-6 z-10">
+                      <div className="flex-1 min-w-0 pr-4">
+                        <h4 className="font-black text-sm sm:text-lg text-white truncate drop-shadow-md">
+                          {season.name || season.title}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-white/80 truncate mt-1 drop-shadow-sm">
+                          {season.title || season.name}
+                        </p>
+                      </div>
+                      
+                      {season.isCurrent && (
+                        <div className="flex-shrink-0 bg-anilist-accent text-black text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                          CURRENT
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))
               ) : (
-                <div className="col-span-full text-center py-12 text-anilist-text text-sm">
+                <div className="col-span-full text-center py-12 text-anilist-text text-xs sm:text-sm">
                   No seasons found.
                 </div>
               )}
@@ -509,7 +572,7 @@ const AnimeDetails: React.FC = () => {
                 />
               ))}
               {(!anime.recommendedAnimes || anime.recommendedAnimes.length === 0) && (
-                <div className="w-full text-center py-12 text-anilist-text text-sm">
+                <div className="w-full text-center py-12 text-anilist-text text-xs sm:text-sm">
                   No recommendations found.
                 </div>
               )}

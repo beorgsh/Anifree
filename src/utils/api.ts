@@ -12,14 +12,15 @@ export const fetchWithProxy = async (targetUrl: string) => {
   const proxies = [
     `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(targetUrl)}`
   ];
 
   try {
     const response = await Promise.any(
       proxies.map(async (proxyUrl) => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout per proxy
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased to 10s
         
         try {
           const res = await fetch(proxyUrl, { signal: controller.signal });
