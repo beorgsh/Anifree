@@ -22,17 +22,30 @@ export const fetchAniList = async (query: string, variables: any = {}, retries =
     return cached.data;
   }
 
-  const executeFetch = async (attempt: number): Promise<any> => {
+  const executeFetch = async (attempt: number, proxyIndex: number = 0): Promise<any> => {
+    const urls = [
+      ANILIST_API_URL,
+      `https://corsproxy.io/?${encodeURIComponent(ANILIST_API_URL)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(ANILIST_API_URL)}`
+    ];
+
+    if (proxyIndex >= urls.length) {
+      throw new Error('Network error: Failed to connect to AniList API. This might be caused by an adblocker or network issue. Try disabling your adblocker or checking your connection.');
+    }
+
+    const targetUrl = urls[proxyIndex];
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(ANILIST_API_URL, {
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        referrerPolicy: 'no-referrer',
         body: JSON.stringify({
           query,
           variables,
@@ -46,7 +59,11 @@ export const fetchAniList = async (query: string, variables: any = {}, retries =
           // Rate limited, wait and retry
           const retryAfter = parseInt(response.headers.get('Retry-After') || '1') * 1000;
           await new Promise(resolve => setTimeout(resolve, retryAfter || 1000));
-          return executeFetch(attempt + 1);
+          return executeFetch(attempt + 1, proxyIndex);
+        }
+        // If proxy fails with 5xx or 403, try next proxy
+        if (response.status >= 500 || response.status === 403) {
+          return executeFetch(0, proxyIndex + 1);
         }
         throw new Error(`AniList API responded with status ${response.status}`);
       }
@@ -61,16 +78,26 @@ export const fetchAniList = async (query: string, variables: any = {}, retries =
       
       return json.data;
     } catch (error) {
+      // If network error or timeout, try next proxy
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.warn(`Fetch failed for ${targetUrl}, trying next proxy...`);
+        return executeFetch(0, proxyIndex + 1);
+      }
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.warn(`Fetch timed out for ${targetUrl}, trying next proxy...`);
+        return executeFetch(0, proxyIndex + 1);
+      }
+
       if (attempt < retries) {
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-        return executeFetch(attempt + 1);
+        return executeFetch(attempt + 1, proxyIndex);
       }
       throw error;
     }
   };
 
-  return executeFetch(0);
+  return executeFetch(0, 0);
 };
 
 export const SEARCH_ANIME_QUERY = `

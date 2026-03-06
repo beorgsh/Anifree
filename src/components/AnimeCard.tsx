@@ -41,7 +41,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, className = '', index = 0,
           {anime.averageScore && (
             <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10">
               <Star size={12} className="text-yellow-400" fill="currentColor" />
-              {anime.averageScore}%
+              {anime.averageScore / 10}
             </div>
           )}
         </div>

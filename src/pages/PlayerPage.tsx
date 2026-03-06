@@ -79,6 +79,15 @@ const PlayerPage: React.FC = () => {
   const m3u8Url = episode.sub?.url || episode.dub?.url;
   const videoUrl = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.title.romaji, episode.episode) : '';
 
+  const handleNext = () => {
+    // Need to get the full list of episodes to find the next one
+    // The current logic only has 'episode' state, not the full list.
+    // I need to refactor to keep the full list in state or fetch it again.
+    // Actually, I can just navigate to the next episode number if I assume they are sequential.
+    const nextEpNum = parseInt(epNum!) + 1;
+    navigate(`/anime/${id}/watch/${nextEpNum}`);
+  };
+
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       <div className="flex-1 w-full h-full">
@@ -92,6 +101,7 @@ const PlayerPage: React.FC = () => {
               fullscreen: true,
             }}
             onBack={() => navigate(-1)}
+            onNext={handleNext}
             className="w-full h-full"
           />
         ) : (

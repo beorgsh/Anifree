@@ -7,9 +7,10 @@ interface PlayerProps {
   className?: string;
   getInstance?: (art: Artplayer) => void;
   onBack?: () => void;
+  onNext?: () => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack }) => {
+const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext }) => {
   const artRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,26 +18,36 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack 
 
     const customControls = [];
     
-    if (onBack) {
+    // Top Left: Back + Lock + Title
+    if (onBack || option.title) {
       customControls.push({
         position: 'top',
         index: 10,
         html: `<div style="display:flex;align-items:center;gap:12px;padding:10px;cursor:pointer;">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-                 <span style="font-weight:bold;font-size:16px;">Back</span>
+                 ${onBack ? `<div id="back-btn" style="display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></div>` : ''}
+                 <div id="lock-btn" style="display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                 <span style="font-weight:bold;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">${option.title || ''}</span>
                </div>`,
-        tooltip: 'Go Back',
-        click: function () {
-          onBack();
+        click: function (art: Artplayer, e: any) {
+          if (onBack && (e.target.id === 'back-btn' || e.target.closest('#back-btn'))) {
+            onBack();
+          }
+          if (e.target.id === 'lock-btn' || e.target.closest('#lock-btn')) {
+            (art as any).lock = !(art as any).lock;
+          }
         },
       });
     }
 
-    if (option.title) {
+    // Top Right: Next
+    if (onNext) {
       customControls.push({
         position: 'top',
         index: 11,
-        html: `<div style="display:flex;align-items:center;padding:10px;font-size:16px;font-weight:500;opacity:0.9;">${option.title}</div>`,
+        html: `<div style="display:flex;align-items:center;padding:10px;cursor:pointer;font-weight:bold;font-size:16px;">Next Episode</div>`,
+        click: function () {
+          onNext();
+        },
       });
     }
 

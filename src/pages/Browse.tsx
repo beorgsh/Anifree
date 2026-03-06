@@ -25,7 +25,7 @@ const Browse: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('https://animeapi.net/schedule');
+      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://animeapi.net/schedule')}`);
       const json = await response.json();
       // Based on sample: { status: "success", results: { Sunday: [...], ... } }
       setSchedule(json.results || json.data || json);
@@ -107,11 +107,6 @@ const Browse: React.FC = () => {
   return (
     <div className="px-4 sm:px-8 lg:px-16 py-8 space-y-12">
       <div className="flex flex-col gap-8">
-        <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 sm:border-l-8 border-anilist-accent pl-4 sm:pl-6 flex items-center gap-3 sm:gap-4">
-          <Compass size={24} className="sm:w-10 sm:h-10 text-anilist-accent" />
-          Browse
-        </h1>
-
         <div className="relative max-w-2xl">
           <input
             type="text"

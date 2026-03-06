@@ -48,10 +48,6 @@ const SearchResults: React.FC = () => {
       className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:px-16"
     >
       <div className="mb-12">
-        <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 sm:border-l-8 border-anilist-accent pl-4 sm:pl-6 flex items-center gap-3 sm:gap-4">
-          <Search size={24} className="sm:w-10 sm:h-10 text-anilist-accent" />
-          Search Results
-        </h1>
         <p className="text-anilist-text mt-2 text-sm font-bold uppercase tracking-widest opacity-70">
           Showing results for: <span className="text-anilist-accent">"{query}"</span> — {results.length} found
         </p>

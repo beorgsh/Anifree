@@ -112,15 +112,6 @@ const Home: React.FC = () => {
       animate={{ opacity: 1 }}
       className="space-y-8 pb-10"
     >
-      {(isTrendingRoute || isPopularRoute) && (
-        <div className="px-4 sm:px-8 lg:px-16 pt-8">
-          <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 sm:border-l-8 border-anilist-accent pl-4 sm:pl-6 flex items-center gap-3 sm:gap-4">
-            {isTrendingRoute ? <TrendingUp size={24} className="sm:w-10 sm:h-10 text-anilist-accent" /> : <Flame size={24} className="sm:w-10 sm:h-10 text-anilist-accent" />}
-            {isTrendingRoute ? 'Trending Anime' : 'Popular Anime'}
-          </h1>
-        </div>
-      )}
-
       {/* Top 10 Today Carousel (Hero) */}
       {!isTrendingRoute && !isPopularRoute && hero && (
         <section className="relative h-[60vh] sm:h-[80vh] w-full overflow-hidden group">

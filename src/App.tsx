@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import PageHeader from './components/PageHeader';
 import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
 import AnimeDetails from './pages/AnimeDetails';
@@ -9,15 +10,32 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import Browse from './pages/Browse';
 import ScrollToTop from './components/ScrollToTop';
 import { AnimatePresence, motion } from 'motion/react';
+import { TrendingUp, Flame, Compass, Search, Download, List, Settings, Play } from 'lucide-react';
+
+const getHeaderProps = (pathname: string) => {
+  if (pathname === '/trending') return { title: 'Trending', icon: <TrendingUp size={20} /> };
+  if (pathname === '/popular') return { title: 'Popular', icon: <Flame size={20} /> };
+  if (pathname === '/browse') return { title: 'Browse', icon: <Compass size={20} /> };
+  if (pathname.startsWith('/search')) return { title: 'Search Results', icon: <Search size={20} /> };
+  if (pathname.startsWith('/anime/')) return { title: 'Anime Details', icon: <Play size={20} /> };
+  if (pathname === '/download') return { title: 'Download', icon: <Download size={20} /> };
+  if (pathname === '/watchlist') return { title: 'Watch List', icon: <List size={20} /> };
+  if (pathname === '/settings') return { title: 'Settings', icon: <Settings size={20} /> };
+  return { title: 'AniFree', icon: <Play size={20} /> };
+};
 
 const AppContent = () => {
   const location = useLocation();
   const isPlayerPage = location.pathname.includes('/watch/');
+  const isHome = location.pathname === '/';
+  const headerProps = getHeaderProps(location.pathname);
 
   return (
     <div className="min-h-screen bg-anilist-bg">
       <ScrollToTop />
-      {!isPlayerPage && <Navbar />}
+      {!isPlayerPage && (
+        isHome ? <Navbar /> : <PageHeader {...headerProps} />
+      )}
       <main className={`${!isPlayerPage ? 'pt-20 pb-20 md:pb-0' : ''}`}>
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname}>
@@ -43,7 +61,7 @@ const AppContent = () => {
           <footer className="bg-anilist-bg py-12 mt-10 pb-32 md:pb-12">
             <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
             <div className="flex items-center justify-center gap-2 text-anilist-heading font-black text-xl tracking-tighter mb-4">
-              <span>ANISTREAM</span>
+              <span>AniFree</span>
             </div>
             <p className="text-sm text-anilist-text">
               Powered by AniList API. This site does not store any files on its server.

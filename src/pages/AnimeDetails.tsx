@@ -21,8 +21,10 @@ const AnimeDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('AnimeDetails useEffect running, id:', id);
     const loadAnime = async () => {
       const animeId = parseInt(id || '');
+      console.log('loadAnime, animeId:', animeId, 'loading:', loading);
       if (isNaN(animeId)) {
         setError('Invalid anime ID.');
         setLoading(false);
@@ -30,12 +32,19 @@ const AnimeDetails: React.FC = () => {
       }
 
       if (!loading) {
+        console.log('Fetching from cache');
         const cachedData = checkCache(ANIME_DETAILS_QUERY, { id: animeId });
-        setAnime(cachedData.Media);
-        fetchEpisodes(cachedData.Media.title.romaji || cachedData.Media.title.english);
+        if (cachedData) {
+          setAnime(cachedData.Media);
+          fetchEpisodes(cachedData.Media.title.romaji || cachedData.Media.title.english);
+        } else {
+          console.log('Cache miss, forcing reload');
+          setLoading(true);
+        }
         return;
       }
 
+      console.log('Fetching from API');
       setLoading(true);
       setError(null);
       try {
@@ -82,7 +91,11 @@ const AnimeDetails: React.FC = () => {
         console.warn('All proxies failed to fetch episodes');
       }
     } catch (error) {
-      console.error('Failed to fetch episodes:', error);
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('Network error while fetching episodes: Please check your internet connection.');
+      } else {
+        console.error('Failed to fetch episodes:', error);
+      }
     } finally {
       setEpLoading(false);
     }
@@ -157,7 +170,7 @@ const AnimeDetails: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 mt-4 text-xs sm:text-sm text-anilist-text font-medium">
               <div className="flex items-center gap-1">
                 <Star size={14} className="text-yellow-400" fill="currentColor" />
-                <span>{anime.averageScore}%</span>
+                <span>{(anime.averageScore / 10).toFixed(1)}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar size={14} />
@@ -258,12 +271,20 @@ const AnimeDetails: React.FC = () => {
           {activeTab === 'episodes' && (
             <div className="space-y-4">
               {epLoading ? (
-                <div className="flex justify-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-anilist-accent border-t-transparent"></div>
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex flex-row gap-3 sm:gap-4 p-2 sm:p-3 animate-pulse">
+                      <div className="w-28 sm:w-48 aspect-video flex-shrink-0 rounded-md bg-white/5" />
+                      <div className="flex flex-col justify-center flex-1 min-w-0 gap-2">
+                        <div className="h-4 w-3/4 bg-white/5 rounded" />
+                        <div className="h-3 w-full bg-white/5 rounded" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : episodes.length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {episodes.map((ep) => (
+                  {episodes.map((ep, index) => (
                     <Link 
                       to={`/anime/${anime.id}/watch/${ep.episode}`} 
                       key={ep.id} 
@@ -272,7 +293,7 @@ const AnimeDetails: React.FC = () => {
                       <div className="relative w-28 sm:w-48 aspect-video flex-shrink-0 rounded-md overflow-hidden bg-anilist-fg">
                         <img 
                           src={ep.image || anime.bannerImage || anime.coverImage.extraLarge} 
-                          alt={`Episode ${ep.episode}`}
+                          alt={`Episode ${index + 1}`}
                           className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
                           referrerPolicy="no-referrer"
                         />
@@ -285,7 +306,7 @@ const AnimeDetails: React.FC = () => {
                       </div>
                       <div className="flex flex-col justify-center flex-1 min-w-0">
                         <h4 className="text-xs sm:text-base font-bold text-anilist-heading line-clamp-1 sm:line-clamp-2">
-                          {ep.episode}. {ep.title || `Episode ${ep.episode}`}
+                          {index + 1}. {ep.title || `Episode ${index + 1}`}
                         </h4>
                         <p className="text-[10px] sm:text-xs text-anilist-text mt-1 sm:mt-2 line-clamp-2 sm:line-clamp-3">
                           {cleanDescription.substring(0, 150)}...

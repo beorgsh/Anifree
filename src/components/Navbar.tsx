@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
               <div className="bg-anilist-accent p-1.5 rounded-lg transform group-hover:rotate-12 transition-transform duration-300">
                 <Play fill="black" size={24} className="text-black" />
               </div>
-              <span>ANISTREAM</span>
+              <span>AniFree</span>
             </Link>
             <div className="hidden md:flex items-center gap-8 text-xs font-black uppercase tracking-widest text-anilist-text">
               <Link to="/" className={`hover:text-anilist-accent transition-colors ${location.pathname === '/' ? 'text-anilist-accent' : ''}`}>Home</Link>
