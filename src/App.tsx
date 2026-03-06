@@ -35,7 +35,7 @@ const AppContent = () => {
       {!isPlayerPage && !isAnimeDetailsPage && (
         isHome ? <Navbar /> : <PageHeader {...headerProps} />
       )}
-      <main className={`${!isPlayerPage ? 'pt-20 pb-20 md:pb-0' : ''}`}>
+      <main className={`${!isPlayerPage && !isAnimeDetailsPage ? 'pt-20 pb-20 md:pb-0' : ''}`}>
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/anime/:id" element={<AnimeDetails />} />

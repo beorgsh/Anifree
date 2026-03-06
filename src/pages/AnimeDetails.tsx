@@ -177,9 +177,6 @@ const AnimeDetails: React.FC = () => {
         <div className="h-[30vh] sm:h-[40vh] bg-white/5 w-full"></div>
         
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-32 relative z-10">
-          {/* Tabs Placeholder */}
-          <div className="h-12 bg-white/10 w-full rounded mb-8"></div>
-
           {/* Header Placeholder (Poster + Title) */}
           <div className="flex flex-row gap-4 sm:gap-8 mb-8">
             <div className="w-28 sm:w-48 aspect-[2/3] bg-white/10 rounded-lg shadow-2xl flex-shrink-0"></div>
@@ -193,6 +190,9 @@ const AnimeDetails: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Tabs Placeholder */}
+          <div className="h-12 bg-white/10 w-full rounded mb-8"></div>
 
           {/* Content Placeholder */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -240,8 +240,14 @@ const AnimeDetails: React.FC = () => {
       className="min-h-screen pb-10 relative"
     >
       <button
-        onClick={() => navigate(-1)}
-        className="absolute top-4 left-4 z-[60] p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }}
+        className="fixed top-4 left-4 z-[100] p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer shadow-lg border border-white/10"
         aria-label="Go back"
       >
         <ChevronLeft size={24} />
@@ -283,15 +289,75 @@ const AnimeDetails: React.FC = () => {
           <img 
             src={info.poster} 
             alt={info.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover blur-sm"
             referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg via-transparent to-transparent"></div>
         </div>
       )}
 
+      {/* Header Section (Poster + Info) - Overlapping Banner */}
+      {activeTab !== 'episodes' && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-32 relative z-20 mb-8">
+          <div className="flex flex-row gap-4 sm:gap-8">
+            {/* Left Column: Poster */}
+            <div className="w-28 sm:w-48 flex-shrink-0">
+              <div className="w-full aspect-[2/3] rounded-lg shadow-2xl overflow-hidden">
+                <img 
+                  src={info.poster} 
+                  alt={info.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Info */}
+            <div className="flex-1 flex flex-col justify-end text-left pb-2">
+              <h1 className="text-xl sm:text-4xl font-black text-anilist-heading leading-tight line-clamp-2 sm:line-clamp-none drop-shadow-md">{info.name}</h1>
+              
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm text-anilist-text font-medium drop-shadow-sm">
+                <div className="flex items-center gap-1">
+                  <Star size={14} className="text-yellow-400" fill="currentColor" />
+                  <span>{moreInfo.malscore || '?'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar size={14} />
+                  <span>{moreInfo.premiered || 'TBA'}</span>
+                </div>
+                <div className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] sm:text-xs backdrop-blur-sm">
+                  {moreInfo.status || 'Unknown'}
+                </div>
+                <div className="px-2 py-0.5 rounded bg-anilist-accent text-black text-[10px] sm:text-xs font-bold shadow-sm">
+                  {info.stats?.quality || 'HD'}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-3">
+                {moreInfo.genres?.slice(0, 3).map((genre: string) => (
+                  <span key={genre} className="rounded-full bg-white/5 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading backdrop-blur-sm">
+                    {genre}
+                  </span>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setActiveTab('episodes');
+                  if (episodes.length > 0) handleEpisodeClick(episodes[0]);
+                }}
+                className="mt-4 w-fit flex items-center gap-2 bg-anilist-accent text-black px-6 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform shadow-lg"
+              >
+                <Play size={16} fill="currentColor" />
+                Watch Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Tabs Header (Full Width) */}
-      <div className={`sticky top-0 z-30 w-full bg-anilist-bg/95 backdrop-blur-md border-b border-white/10 ${activeTab === 'episodes' ? '' : '-mt-10 sm:-mt-20'}`}>
+      <div className={`sticky top-0 z-30 w-full bg-black/80 backdrop-blur-md border-b border-white/10 transition-all duration-300 ${activeTab === 'episodes' ? '' : ''}`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex overflow-x-auto hide-scrollbar">
           {['overview', 'episodes', 'seasons', 'recommended'].map((tab) => (
             <button
@@ -315,62 +381,6 @@ const AnimeDetails: React.FC = () => {
         <div className="mt-8">
           {activeTab === 'overview' && (
             <div className="space-y-8">
-              {/* Top Section: Poster & Main Info */}
-              <div className="flex flex-row gap-4 sm:gap-8">
-                {/* Left Column: Poster */}
-                <div className="w-28 sm:w-48 flex-shrink-0">
-                  <div className="w-full aspect-[2/3] rounded-lg shadow-2xl overflow-hidden">
-                    <img 
-                      src={info.poster} 
-                      alt={info.name}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                </div>
-
-                {/* Right Column: Info */}
-                <div className="flex-1 flex flex-col justify-end text-left pb-2">
-                  <h1 className="text-xl sm:text-4xl font-black text-anilist-heading leading-tight line-clamp-2 sm:line-clamp-none">{info.name}</h1>
-                  
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 sm:mt-4 text-xs sm:text-sm text-anilist-text font-medium">
-                    <div className="flex items-center gap-1">
-                      <Star size={14} className="text-yellow-400" fill="currentColor" />
-                      <span>{moreInfo.malscore || '?'}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      <span>{moreInfo.premiered || 'TBA'}</span>
-                    </div>
-                    <div className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] sm:text-xs">
-                      {moreInfo.status || 'Unknown'}
-                    </div>
-                    <div className="px-2 py-0.5 rounded bg-anilist-accent text-black text-[10px] sm:text-xs font-bold">
-                      {info.stats?.quality || 'HD'}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {moreInfo.genres?.slice(0, 3).map((genre: string) => (
-                      <span key={genre} className="rounded-full bg-white/5 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading">
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('episodes');
-                      if (episodes.length > 0) handleEpisodeClick(episodes[0]);
-                    }}
-                    className="mt-4 w-fit flex items-center gap-2 bg-anilist-accent text-black px-6 py-2 rounded-full font-bold text-sm hover:scale-105 transition-transform"
-                  >
-                    <Play size={16} fill="currentColor" />
-                    Watch Now
-                  </button>
-                </div>
-              </div>
-
               <div className="flex flex-col md:flex-row gap-8">
                 {/* Left Column: Info Panel */}
                 <div className="w-full md:w-64 flex-shrink-0 space-y-6">
