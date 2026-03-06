@@ -1,0 +1,5 @@
+{
+  "name": "AniStream",
+  "description": "A modern, minimalist anime streaming platform powered by AniList API.",
+  "requestFramePermissions": []
+}
