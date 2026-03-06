@@ -1,64 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  fetchAniList, 
-  checkCache,
-  TRENDING_ANIME_QUERY, 
-  POPULAR_ANIME_QUERY, 
-  TOP_RATED_ANIME_QUERY, 
-  RECENTLY_UPDATED_ANIME_QUERY 
-} from '../services/anilist';
 import AnimeCard from '../components/AnimeCard';
 import { Play, Info, ChevronLeft, ChevronRight, TrendingUp, Flame } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeroSkeleton, SectionSkeleton } from '../components/Skeleton';
 
+import { fetchWithProxy } from '../utils/api';
+
 const Home: React.FC = () => {
   const [trending, setTrending] = useState<any[]>([]);
   const [popular, setPopular] = useState<any[]>([]);
   const [topRated, setTopRated] = useState<any[]>([]);
   const [recentlyUpdated, setRecentlyUpdated] = useState<any[]>([]);
-  const [loading, setLoading] = useState(() => {
-    // Check if all main queries are cached
-    const isCached = 
-      checkCache(TRENDING_ANIME_QUERY, { page: 1, perPage: 10 }) &&
-      checkCache(POPULAR_ANIME_QUERY, { page: 1, perPage: 20 }) &&
-      checkCache(TOP_RATED_ANIME_QUERY, { page: 1, perPage: 20 }) &&
-      checkCache(RECENTLY_UPDATED_ANIME_QUERY, { page: 1, perPage: 20 });
-    return !isCached;
-  });
+  const [spotlights, setSpotlights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [heroIndex, setHeroIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
 
   useEffect(() => {
     const loadData = async () => {
-      // If already loading is false, it means it was cached, but we still want to fetch in background to refresh if needed
-      // or just skip if we trust the cache. For now, let's fetch if loading is true.
-      if (!loading) {
-        // Even if cached, we populate state to ensure UI is ready
-        setTrending(checkCache(TRENDING_ANIME_QUERY, { page: 1, perPage: 10 }).Page.media);
-        setPopular(checkCache(POPULAR_ANIME_QUERY, { page: 1, perPage: 20 }).Page.media);
-        setTopRated(checkCache(TOP_RATED_ANIME_QUERY, { page: 1, perPage: 20 }).Page.media);
-        setRecentlyUpdated(checkCache(RECENTLY_UPDATED_ANIME_QUERY, { page: 1, perPage: 20 }).Page.media);
-        return;
-      }
-
       setError(null);
       try {
-        const [trendingData, popularData, topRatedData, updatedData] = await Promise.all([
-          fetchAniList(TRENDING_ANIME_QUERY, { page: 1, perPage: 10 }),
-          fetchAniList(POPULAR_ANIME_QUERY, { page: 1, perPage: 20 }),
-          fetchAniList(TOP_RATED_ANIME_QUERY, { page: 1, perPage: 20 }),
-          fetchAniList(RECENTLY_UPDATED_ANIME_QUERY, { page: 1, perPage: 20 })
-        ]);
-        setTrending(trendingData.Page.media);
-        setPopular(popularData.Page.media);
-        setTopRated(topRatedData.Page.media);
-        setRecentlyUpdated(updatedData.Page.media);
+        const response = await fetch('https://anime-api-iota-six.vercel.app/api');
+        if (!response.ok) throw new Error('Failed to fetch anime data');
+        const json = await response.json();
+        
+        if (json.success && json.results) {
+          setSpotlights(json.results.spotlights || []);
+          setTrending(json.results.trending || []);
+          setPopular(json.results.mostPopular || []);
+          setTopRated(json.results.topAiring || []);
+          setRecentlyUpdated(json.results.latestEpisode || []);
+        } else {
+          throw new Error('Invalid data format received');
+        }
       } catch (err: any) {
         console.error('Failed to fetch anime:', err);
-        setError(err.message || 'Failed to connect to AniList. Please check your internet connection.');
+        setError(err.message || 'Failed to connect to the anime API. Please check your internet connection.');
       } finally {
         setLoading(false);
       }
@@ -67,12 +46,12 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (trending.length === 0) return;
+    if (spotlights.length === 0) return;
     const interval = setInterval(() => {
-      setHeroIndex((prev) => (prev + 1) % trending.length);
+      setHeroIndex((prev) => (prev + 1) % spotlights.length);
     }, 8000);
     return () => clearInterval(interval);
-  }, [trending]);
+  }, [spotlights]);
 
   if (loading) {
     return (
@@ -102,7 +81,7 @@ const Home: React.FC = () => {
     );
   }
 
-  const hero = trending[heroIndex];
+  const hero = spotlights[heroIndex];
   const isTrendingRoute = location.pathname === '/trending';
   const isPopularRoute = location.pathname === '/popular';
 
@@ -125,8 +104,8 @@ const Home: React.FC = () => {
               className="absolute inset-0"
             >
               <img 
-                src={hero.bannerImage || hero.coverImage.extraLarge} 
-                alt={hero.title.romaji}
+                src={hero.poster} 
+                alt={hero.title}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -144,11 +123,11 @@ const Home: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <span className="bg-anilist-accent text-black text-[10px] sm:text-xs font-black px-2 py-1 rounded uppercase tracking-widest">
-                  # {heroIndex + 1} Trending Today
+                  # {heroIndex + 1} Spotlight
                 </span>
               </div>
               <h1 className="text-3xl sm:text-6xl font-black text-anilist-heading leading-tight tracking-tighter drop-shadow-2xl line-clamp-2 sm:line-clamp-none">
-                {hero.title.romaji}
+                {hero.title}
               </h1>
               <p className="line-clamp-2 sm:line-clamp-3 text-xs sm:text-base text-anilist-text max-w-2xl leading-relaxed opacity-90" 
                  dangerouslySetInnerHTML={{ __html: hero.description }} />
@@ -175,13 +154,13 @@ const Home: React.FC = () => {
           {/* Carousel Controls */}
           <div className="absolute bottom-12 sm:bottom-20 right-4 sm:right-16 flex gap-2">
             <button 
-              onClick={() => setHeroIndex((prev) => (prev - 1 + trending.length) % trending.length)}
+              onClick={() => setHeroIndex((prev) => (prev - 1 + spotlights.length) % spotlights.length)}
               className="p-2 sm:p-3 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all backdrop-blur-md"
             >
               <ChevronLeft size={20} />
             </button>
             <button 
-              onClick={() => setHeroIndex((prev) => (prev + 1) % trending.length)}
+              onClick={() => setHeroIndex((prev) => (prev + 1) % spotlights.length)}
               className="p-2 sm:p-3 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all backdrop-blur-md"
             >
               <ChevronRight size={20} />
@@ -192,10 +171,36 @@ const Home: React.FC = () => {
 
       {/* Sections */}
       <div className="space-y-10">
-        <AnimeSection title="Trending Now" data={trending} link="/trending" />
-        <AnimeSection title="Recently Updated" data={recentlyUpdated} />
-        <AnimeSection title="All-Time Popular" data={popular} link="/popular" />
-        <AnimeSection title="Top Rated" data={topRated} />
+        {isTrendingRoute ? (
+          <section className="px-4 sm:px-8 lg:px-16 pt-8">
+            <h2 className="text-2xl sm:text-3xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 border-anilist-accent pl-4 mb-8">
+              Trending Now
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+              {trending.map((anime, i) => (
+                <AnimeCard key={anime.id} anime={anime} index={i} />
+              ))}
+            </div>
+          </section>
+        ) : isPopularRoute ? (
+          <section className="px-4 sm:px-8 lg:px-16 pt-8">
+            <h2 className="text-2xl sm:text-3xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 border-anilist-accent pl-4 mb-8">
+              All-Time Popular
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+              {popular.map((anime, i) => (
+                <AnimeCard key={anime.id} anime={anime} index={i} />
+              ))}
+            </div>
+          </section>
+        ) : (
+          <>
+            <AnimeSection title="Trending Now" data={trending} link="/trending" />
+            <AnimeSection title="Recently Updated" data={recentlyUpdated} />
+            <AnimeSection title="All-Time Popular" data={popular} link="/popular" />
+            <AnimeSection title="Top Airing" data={topRated} />
+          </>
+        )}
       </div>
     </motion.div>
   );

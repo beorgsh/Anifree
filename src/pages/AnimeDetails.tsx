@@ -1,61 +1,63 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { fetchAniList, checkCache, ANIME_DETAILS_QUERY } from '../services/anilist';
+import { useParams } from 'react-router-dom';
 import { Star, Calendar, Tv, Play } from 'lucide-react';
 import AnimeCard from '../components/AnimeCard';
+import Player from '../components/Player';
+import { convertM3U8toMP4 } from '../utils/player';
 
-type Tab = 'overview' | 'episodes' | 'relations' | 'recommended';
+type Tab = 'overview' | 'episodes' | 'recommended';
 
 import { motion } from 'motion/react';
+
+import { fetchWithProxy } from '../utils/api';
 
 const AnimeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<any>(null);
+  const [seasons, setSeasons] = useState<any[]>([]);
   const [episodes, setEpisodes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(() => {
-    const animeId = parseInt(id || '');
-    return !checkCache(ANIME_DETAILS_QUERY, { id: animeId });
-  });
+  const [loading, setLoading] = useState(true);
   const [epLoading, setEpLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [error, setError] = useState<string | null>(null);
+  const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
+  const [videoUrl, setVideoUrl] = useState<string>('');
 
   useEffect(() => {
-    console.log('AnimeDetails useEffect running, id:', id);
     const loadAnime = async () => {
-      const animeId = parseInt(id || '');
-      console.log('loadAnime, animeId:', animeId, 'loading:', loading);
-      if (isNaN(animeId)) {
+      if (!id) {
         setError('Invalid anime ID.');
         setLoading(false);
         return;
       }
 
-      if (!loading) {
-        console.log('Fetching from cache');
-        const cachedData = checkCache(ANIME_DETAILS_QUERY, { id: animeId });
-        if (cachedData) {
-          setAnime(cachedData.Media);
-          fetchEpisodes(cachedData.Media.title.romaji || cachedData.Media.title.english);
-        } else {
-          console.log('Cache miss, forcing reload');
-          setLoading(true);
-        }
-        return;
-      }
-
-      console.log('Fetching from API');
       setLoading(true);
       setError(null);
+      
       try {
-        const data = await fetchAniList(ANIME_DETAILS_QUERY, { id: animeId });
-        setAnime(data.Media);
+        // Fetch anime details first to get the title
+        const json = await fetchWithProxy(`https://aniwatch-api-one-rose.vercel.app/api/v2/hianime/anime/${id}`);
         
-        // Fetch episodes in background
-        fetchEpisodes(data.Media.title.romaji || data.Media.title.english);
+        const data = json.data || json.results || json;
+        const animeData = data.anime || data.data || (data.info ? data : null);
+
+        if (animeData) {
+          setAnime(animeData);
+          setSeasons(data.seasons || []);
+          
+          // Start fetching episodes immediately after getting the title
+          // This runs in parallel with the state update and rendering
+          const title = animeData.info?.name || animeData.title || animeData.japanese_title;
+          if (title) {
+            fetchEpisodes(title);
+          }
+        } else {
+          console.error('Invalid data format:', json);
+          throw new Error('Invalid data format received');
+        }
       } catch (err: any) {
         console.error('Failed to fetch anime details:', err);
-        setError(err.message || 'Failed to load anime details. Please check your connection or try again later.');
+        setError(err.message || 'Failed to load anime details.');
       } finally {
         setLoading(false);
       }
@@ -73,32 +75,56 @@ const AnimeDetails: React.FC = () => {
         `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
       ];
 
+      // Create a timeout promise to fail fast if proxies are slow
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Proxy timeout')), 8000)
+      );
+
       const fetchPromises = proxies.map(async (proxyUrl) => {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`Proxy failed: ${proxyUrl}`);
-        const json = await response.json();
-        if (json.status !== 'success' || !json.results || json.results.length === 0) {
-          throw new Error(`Invalid data from proxy: ${proxyUrl}`);
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout per request
+          
+          const response = await fetch(proxyUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) throw new Error(`Proxy failed: ${proxyUrl}`);
+          const json = await response.json();
+          
+          if (json.status !== 'success' || !json.results || json.results.length === 0) {
+            throw new Error(`Invalid data from proxy: ${proxyUrl}`);
+          }
+          return json;
+        } catch (e) {
+          throw e;
         }
-        return json;
       });
 
       try {
-        const data = await Promise.any(fetchPromises);
+        // Race against the timeout
+        const data: any = await Promise.race([
+          Promise.any(fetchPromises),
+          timeoutPromise
+        ]);
+        
         const fetchedEpisodes = data.results[0].episodes || [];
         setEpisodes(fetchedEpisodes);
       } catch (error) {
-        console.warn('All proxies failed to fetch episodes');
+        console.warn('All proxies failed or timed out fetching episodes');
       }
     } catch (error) {
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        console.error('Network error while fetching episodes: Please check your internet connection.');
-      } else {
-        console.error('Failed to fetch episodes:', error);
-      }
+      console.error('Failed to fetch episodes:', error);
     } finally {
       setEpLoading(false);
     }
+  };
+
+  const handleEpisodeClick = (ep: any) => {
+    setSelectedEpisode(ep);
+    const m3u8Url = ep.sub?.url || ep.dub?.url;
+    const url = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.info?.name, ep.episode) : '';
+    setVideoUrl(url);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (loading) {
@@ -128,7 +154,9 @@ const AnimeDetails: React.FC = () => {
 
   if (!anime) return <div className="p-20 text-center text-anilist-text">Anime not found</div>;
 
-  const cleanDescription = anime.description?.replace(/<[^>]*>?/gm, '') || 'No description available.';
+  const info = anime.info || {};
+  const moreInfo = anime.moreInfo || {};
+  const cleanDescription = info.description?.replace(/<[^>]*>?/gm, '') || 'No description available.';
 
   return (
     <motion.div 
@@ -137,87 +165,85 @@ const AnimeDetails: React.FC = () => {
       exit={{ opacity: 0 }}
       className="min-h-screen pb-20"
     >
-      {/* Banner */}
-      <div className="relative h-[30vh] sm:h-[40vh] w-full overflow-hidden">
-        <img 
-          src={anime.bannerImage || anime.coverImage.extraLarge} 
-          alt={anime.title.romaji}
-          className="h-full w-full object-cover opacity-30 blur-sm"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg to-transparent"></div>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-20 sm:-mt-32 relative z-10">
-        <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
-          {/* Left Column: Poster */}
-          <div className="w-32 sm:w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0">
+      {/* Banner / Player Area */}
+      <div className="relative h-[30vh] sm:h-[40vh] w-full overflow-hidden bg-black">
+        {videoUrl ? (
+          <Player 
+            key={videoUrl}
+            option={{
+              url: videoUrl,
+              title: `${info.name} - Episode ${selectedEpisode.episode}`,
+              poster: selectedEpisode.image || info.poster,
+              fullscreen: true,
+            }}
+            className="w-full h-full"
+          />
+        ) : (
+          <>
             <img 
-              src={anime.coverImage.extraLarge} 
-              alt={anime.title.romaji}
-              className="w-full rounded-lg shadow-2xl"
+              src={info.poster} 
+              alt={info.name}
+              className="h-full w-full object-cover opacity-30 blur-sm"
               referrerPolicy="no-referrer"
             />
-          </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg to-transparent"></div>
+          </>
+        )}
+      </div>
 
-          {/* Right Column: Info */}
-          <div className="flex-1 flex flex-col justify-end pt-4 sm:pt-0 text-center md:text-left">
-            <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading leading-tight">{anime.title.romaji}</h1>
-            {anime.title.english && anime.title.english !== anime.title.romaji && (
-              <h2 className="text-sm sm:text-base text-anilist-text mt-1">{anime.title.english}</h2>
-            )}
-            
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 mt-4 text-xs sm:text-sm text-anilist-text font-medium">
-              <div className="flex items-center gap-1">
-                <Star size={14} className="text-yellow-400" fill="currentColor" />
-                <span>{(anime.averageScore / 10).toFixed(1)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span>{anime.seasonYear || 'TBA'}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Tv size={14} />
-                <span>{anime.format}</span>
-              </div>
-              <div className="px-2 py-0.5 rounded bg-white/10 text-white">
-                {anime.status}
-              </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-32 relative z-10">
+        {/* Right Column: Info - Only show in overview */}
+        {activeTab === 'overview' && (
+          <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
+            {/* Left Column: Poster */}
+            <div className="w-32 sm:w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0">
+              <img 
+                src={info.poster} 
+                alt={info.name}
+                className="w-full rounded-lg shadow-2xl"
+                referrerPolicy="no-referrer"
+              />
             </div>
 
-            <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
-              {anime.genres.map((genre: string) => (
-                <span key={genre} className="rounded-full bg-white/5 px-3 py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading">
-                  {genre}
-                </span>
-              ))}
-            </div>
-            
-            <div className="mt-6 flex justify-center md:justify-start gap-3">
-              {episodes.length > 0 ? (
-                <Link 
-                  to={`/anime/${anime.id}/watch/${episodes[0].episode}`}
-                  className="flex items-center gap-2 rounded-md bg-anilist-accent px-6 py-2.5 text-sm sm:text-base font-bold text-black transition-transform hover:scale-105"
-                >
-                  <Play fill="currentColor" size={18} />
-                  PLAY EP 1
-                </Link>
-              ) : (
-                <button 
-                  disabled
-                  className="flex items-center gap-2 rounded-md bg-white/10 px-6 py-2.5 text-sm sm:text-base font-bold text-white/50 cursor-not-allowed"
-                >
-                  <Play fill="currentColor" size={18} />
-                  {epLoading ? 'LOADING...' : 'NO EPISODES'}
-                </button>
+            {/* Right Column: Info */}
+            <div className="flex-1 flex flex-col justify-end pt-4 sm:pt-0 text-center md:text-left">
+              <h1 className="text-2xl sm:text-4xl font-black text-anilist-heading leading-tight">{info.name}</h1>
+              {moreInfo.japanese && moreInfo.japanese !== info.name && (
+                <h2 className="text-sm sm:text-base text-anilist-text mt-1">{moreInfo.japanese}</h2>
               )}
+              
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 mt-4 text-xs sm:text-sm text-anilist-text font-medium">
+                <div className="flex items-center gap-1">
+                  <Star size={14} className="text-yellow-400" fill="currentColor" />
+                  <span>{moreInfo.malscore || '?'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar size={14} />
+                  <span>{moreInfo.premiered || 'TBA'}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Tv size={14} />
+                  <span>{info.stats?.type || 'TV'}</span>
+                </div>
+                <div className="px-2 py-0.5 rounded bg-white/10 text-white">
+                  {moreInfo.status || 'Unknown'}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
+                {moreInfo.genres?.map((genre: string) => (
+                  <span key={genre} className="rounded-full bg-white/5 px-3 py-1 text-[10px] sm:text-xs border border-white/10 text-anilist-heading">
+                    {genre}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tabs */}
-        <div className="mt-10 border-b border-white/10 flex overflow-x-auto hide-scrollbar">
-          {(['overview', 'episodes', 'relations', 'recommended'] as Tab[]).map((tab) => (
+        <div className="mt-16 sm:mt-10 border-b border-white/10 flex overflow-x-auto hide-scrollbar">
+          {['overview', 'episodes', 'seasons', 'recommended'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -238,30 +264,34 @@ const AnimeDetails: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="md:col-span-2 space-y-4">
                 <h3 className="text-lg font-bold text-anilist-heading">Synopsis</h3>
-                <p className="text-xs sm:text-sm text-anilist-text leading-relaxed" dangerouslySetInnerHTML={{ __html: anime.description || 'No synopsis available.' }} />
+                <p className="text-xs sm:text-sm text-anilist-text leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanDescription }} />
               </div>
               <div className="space-y-4 bg-white/5 p-4 rounded-lg border border-white/10 h-fit">
                 <h3 className="text-sm font-bold text-anilist-heading uppercase tracking-wider">Information</h3>
                 <div className="space-y-3 text-xs sm:text-sm">
                   <div>
                     <span className="text-anilist-text block">Format</span>
-                    <span className="text-anilist-heading">{anime.format}</span>
+                    <span className="text-anilist-heading">{info.stats?.type || 'Unknown'}</span>
                   </div>
                   <div>
                     <span className="text-anilist-text block">Episodes</span>
-                    <span className="text-anilist-heading">{anime.episodes || 'Unknown'}</span>
+                    <span className="text-anilist-heading">{info.stats?.episodes?.sub || 'Unknown'}</span>
                   </div>
                   <div>
                     <span className="text-anilist-text block">Episode Duration</span>
-                    <span className="text-anilist-heading">{anime.duration ? `${anime.duration} mins` : 'Unknown'}</span>
+                    <span className="text-anilist-heading">{moreInfo.duration || 'Unknown'}</span>
                   </div>
                   <div>
                     <span className="text-anilist-text block">Status</span>
-                    <span className="text-anilist-heading">{anime.status}</span>
+                    <span className="text-anilist-heading">{moreInfo.status || 'Unknown'}</span>
                   </div>
                   <div>
-                    <span className="text-anilist-text block">Season</span>
-                    <span className="text-anilist-heading capitalize">{anime.season?.toLowerCase()} {anime.seasonYear}</span>
+                    <span className="text-anilist-text block">Aired</span>
+                    <span className="text-anilist-heading">{moreInfo.aired || 'Unknown'}</span>
+                  </div>
+                  <div>
+                    <span className="text-anilist-text block">Studios</span>
+                    <span className="text-anilist-heading">{moreInfo.studios || 'Unknown'}</span>
                   </div>
                 </div>
               </div>
@@ -285,14 +315,14 @@ const AnimeDetails: React.FC = () => {
               ) : episodes.length > 0 ? (
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {episodes.map((ep, index) => (
-                    <Link 
-                      to={`/anime/${anime.id}/watch/${ep.episode}`} 
+                    <button 
+                      onClick={() => handleEpisodeClick(ep)}
                       key={ep.id} 
-                      className="flex flex-row gap-3 sm:gap-4 p-2 sm:p-3 hover:bg-white/5 rounded-lg transition-colors group border border-transparent hover:border-white/10"
+                      className="flex flex-row gap-3 sm:gap-4 p-2 sm:p-3 hover:bg-white/5 rounded-lg transition-colors group border border-transparent hover:border-white/10 w-full text-left"
                     >
                       <div className="relative w-28 sm:w-48 aspect-video flex-shrink-0 rounded-md overflow-hidden bg-anilist-fg">
                         <img 
-                          src={ep.image || anime.bannerImage || anime.coverImage.extraLarge} 
+                          src={ep.image || info.poster} 
                           alt={`Episode ${index + 1}`}
                           className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
                           referrerPolicy="no-referrer"
@@ -301,7 +331,7 @@ const AnimeDetails: React.FC = () => {
                           <Play className="text-white w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" />
                         </div>
                         <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold text-white">
-                          {anime.duration ? `${anime.duration}m` : '24m'}
+                          {moreInfo.duration || '24m'}
                         </div>
                       </div>
                       <div className="flex flex-col justify-center flex-1 min-w-0">
@@ -312,7 +342,7 @@ const AnimeDetails: React.FC = () => {
                           {cleanDescription.substring(0, 150)}...
                         </p>
                       </div>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -323,18 +353,28 @@ const AnimeDetails: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'relations' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {anime.relations?.edges?.map((edge: any) => (
-                <AnimeCard 
-                  key={edge.node.id} 
-                  anime={edge.node} 
-                  badge={edge.relationType.replace(/_/g, ' ')}
-                />
-              ))}
-              {(!anime.relations?.edges || anime.relations.edges.length === 0) && (
+          {activeTab === 'seasons' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {seasons.length > 0 ? (
+                seasons.map((season: any) => (
+                  <a 
+                    href={`/anime/${season.id}`}
+                    key={season.id}
+                    className={`block p-3 rounded-lg border transition-all ${
+                      season.isCurrent 
+                        ? 'bg-anilist-accent/10 border-anilist-accent text-anilist-accent' 
+                        : 'bg-white/5 border-white/10 text-anilist-text hover:bg-white/10 hover:text-anilist-heading'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <h4 className="font-bold text-sm truncate">{season.name || season.title}</h4>
+                      <p className="text-xs opacity-70 mt-1">{season.title || season.name}</p>
+                    </div>
+                  </a>
+                ))
+              ) : (
                 <div className="col-span-full text-center py-12 text-anilist-text text-sm">
-                  No relations found.
+                  No seasons found.
                 </div>
               )}
             </div>
@@ -342,15 +382,15 @@ const AnimeDetails: React.FC = () => {
 
           {activeTab === 'recommended' && (
             <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar">
-              {anime.recommendations?.nodes?.map((node: any, i: number) => (
+              {anime.recommendedAnimes?.map((node: any, i: number) => (
                 <AnimeCard 
-                  key={node.mediaRecommendation.id} 
-                  anime={node.mediaRecommendation} 
+                  key={node.id} 
+                  anime={node} 
                   index={i}
                   className="flex-shrink-0 w-32 sm:w-44 md:w-48 lg:w-56 snap-start"
                 />
               ))}
-              {(!anime.recommendations?.nodes || anime.recommendations.nodes.length === 0) && (
+              {(!anime.recommendedAnimes || anime.recommendedAnimes.length === 0) && (
                 <div className="w-full text-center py-12 text-anilist-text text-sm">
                   No recommendations found.
                 </div>

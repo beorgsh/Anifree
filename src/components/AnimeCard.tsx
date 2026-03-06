@@ -23,8 +23,8 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, className = '', index = 0,
       >
         <div className="relative aspect-[1/1.414] overflow-hidden rounded-md bg-anilist-fg shadow-lg">
           <img 
-            src={anime.coverImage.extraLarge || anime.coverImage.large} 
-            alt={anime.title.romaji}
+            src={anime.poster} 
+            alt={anime.title}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             referrerPolicy="no-referrer"
           />
@@ -38,16 +38,20 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, className = '', index = 0,
               {badge}
             </div>
           )}
-          {anime.averageScore && (
+          {anime.tvInfo?.sub && (
             <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10">
-              <Star size={12} className="text-yellow-400" fill="currentColor" />
-              {anime.averageScore / 10}
+              <span className="text-anilist-accent">SUB</span> {anime.tvInfo.sub}
+            </div>
+          )}
+          {anime.tvInfo?.dub && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10">
+              <span className="text-anilist-accent">DUB</span> {anime.tvInfo.dub}
             </div>
           )}
         </div>
         <div className="flex flex-col gap-1">
           <h3 className="line-clamp-2 text-xs sm:text-sm font-semibold text-anilist-heading group-hover:text-anilist-accent transition-colors leading-tight">
-            {anime.title.romaji || anime.title.english}
+            {anime.title || anime.japanese_title}
           </h3>
         </div>
       </Link>

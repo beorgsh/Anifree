@@ -5,7 +5,6 @@ import BottomNav from './components/BottomNav';
 import Home from './pages/Home';
 import AnimeDetails from './pages/AnimeDetails';
 import SearchResults from './pages/SearchResults';
-import PlayerPage from './pages/PlayerPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Browse from './pages/Browse';
 import ScrollToTop from './components/ScrollToTop';
@@ -42,7 +41,6 @@ const AppContent = () => {
             <Routes location={location}>
               <Route path="/" element={<Home />} />
               <Route path="/anime/:id" element={<AnimeDetails />} />
-              <Route path="/anime/:id/watch/:epNum" element={<PlayerPage />} />
               <Route path="/search" element={<SearchResults />} />
               <Route path="/trending" element={<Home />} />
               <Route path="/popular" element={<Home />} />
@@ -64,7 +62,7 @@ const AppContent = () => {
               <span>AniFree</span>
             </div>
             <p className="text-sm text-anilist-text">
-              Powered by AniList API. This site does not store any files on its server.
+              Powered by Anime API. This site does not store any files on its server.
             </p>
             <div className="mt-6 flex justify-center gap-6 text-xs text-anilist-text font-medium uppercase tracking-widest">
               <a href="#" className="hover:text-anilist-accent transition-colors">Terms</a>

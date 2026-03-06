@@ -1,36 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { fetchAniList, checkCache, SEARCH_ANIME_QUERY } from '../services/anilist';
 import AnimeCard from '../components/AnimeCard';
 import { motion } from 'motion/react';
 import { Search } from 'lucide-react';
 import { AnimeCardSkeleton } from '../components/Skeleton';
 
+import { fetchWithProxy } from '../utils/api';
+
 const SearchResults: React.FC = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(() => {
-    if (!query) return false;
-    return !checkCache(SEARCH_ANIME_QUERY, { search: query, page: 1, perPage: 30 });
-  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const performSearch = async () => {
       if (!query) return;
 
-      if (!loading) {
-        const cachedData = checkCache(SEARCH_ANIME_QUERY, { search: query, page: 1, perPage: 30 });
-        setResults(cachedData.Page.media);
-        return;
-      }
-
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchAniList(SEARCH_ANIME_QUERY, { search: query, page: 1, perPage: 30 });
-        setResults(data.Page.media);
+        const response = await fetch(`https://anime-api-iota-six.vercel.app/api/search?keyword=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error('Failed to search anime');
+        const json = await response.json();
+        
+        if (json.success && json.results && json.results.data) {
+          setResults(json.results.data);
+        } else {
+          setResults([]);
+        }
       } catch (err: any) {
         console.error('Search failed:', err);
         setError(err.message || 'Failed to search anime.');

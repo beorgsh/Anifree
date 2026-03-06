@@ -3,16 +3,18 @@ import { Search, X, Loader2, Compass } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AnimeCard from '../components/AnimeCard';
 
+import { fetchWithProxy } from '../utils/api';
+
 const Browse: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
-  const [schedule, setSchedule] = useState<any>(null);
+  const [browseData, setBrowseData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query) {
-      fetchSchedule();
+      fetchBrowseData();
     } else {
       const timer = setTimeout(() => {
         searchAnime(query);
@@ -21,17 +23,21 @@ const Browse: React.FC = () => {
     }
   }, [query]);
 
-  const fetchSchedule = async () => {
+  const fetchBrowseData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://animeapi.net/schedule')}`);
+      const response = await fetch('https://anime-api-iota-six.vercel.app/api');
+      if (!response.ok) throw new Error('Failed to fetch browse data');
       const json = await response.json();
-      // Based on sample: { status: "success", results: { Sunday: [...], ... } }
-      setSchedule(json.results || json.data || json);
+      if (json.success && json.results) {
+        setBrowseData(json.results);
+      } else {
+        setBrowseData(null);
+      }
     } catch (err) {
-      console.error('Failed to fetch schedule:', err);
-      setError('Failed to load schedule');
+      console.error('Failed to fetch browse data:', err);
+      setError('Failed to load browse data');
     } finally {
       setLoading(false);
     }
@@ -41,10 +47,14 @@ const Browse: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://anime.apex-cloud.workers.dev/?method=search&query=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`https://anime-api-iota-six.vercel.app/api/search?keyword=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) throw new Error('Search failed');
       const json = await response.json();
-      // Assuming structure: { status: 200, data: [] }
-      setResults(json.data || json.results || []);
+      if (json.success && json.results && json.results.data) {
+        setResults(json.results.data);
+      } else {
+        setResults([]);
+      }
     } catch (err) {
       console.error('Search failed:', err);
       setError('Search failed');
@@ -53,53 +63,37 @@ const Browse: React.FC = () => {
     }
   };
 
-  const mapToAnimeCard = (item: any) => {
-    // Map external API structure to AnimeCard expected structure
-    // Based on common patterns for these types of APIs
-    return {
-      id: item.id || item.animeId || item.anime_id || Math.random().toString(),
-      title: {
-        romaji: item.title || item.animeTitle || item.name || item.anime_name,
-        english: item.title || item.animeTitle || item.name || item.anime_name
-      },
-      coverImage: {
-        extraLarge: item.image || item.animeImg || item.poster || item.anime_image,
-        large: item.image || item.animeImg || item.poster || item.anime_image
-      },
-      averageScore: item.score || item.rating || item.anime_score || null
-    };
-  };
+  const renderBrowseSections = () => {
+    if (!browseData) return null;
 
-  const renderSchedule = () => {
-    if (!schedule) return null;
+    const sections = [
+      { title: 'Top Airing', data: browseData.topAiring },
+      { title: 'Top Upcoming', data: browseData.topUpcoming },
+      { title: 'Latest Completed', data: browseData.latestCompleted },
+    ];
 
-    // Handle different possible schedule structures
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    
     return (
       <div className="space-y-10">
-        {days.map(day => {
-          const dayData = schedule[day] || schedule[day.charAt(0).toUpperCase() + day.slice(1)];
-          if (!dayData || !Array.isArray(dayData) || dayData.length === 0) return null;
-
-          return (
-            <section key={day} className="space-y-4">
-              <h2 className="text-xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 border-anilist-accent pl-4">
-                {day}
-              </h2>
-              <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar snap-x">
-                {dayData.map((item: any, i: number) => (
-                  <AnimeCard 
-                    key={item.id || i} 
-                    anime={mapToAnimeCard(item)} 
-                    index={i}
-                    className="flex-shrink-0 w-32 sm:w-44 snap-start"
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {sections.map(
+          (section, idx) =>
+            section.data && section.data.length > 0 && (
+              <section key={idx} className="space-y-4">
+                <h2 className="text-xl font-black text-anilist-heading uppercase tracking-tighter border-l-4 border-anilist-accent pl-4">
+                  {section.title}
+                </h2>
+                <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar snap-x">
+                  {section.data.map((item: any, i: number) => (
+                    <AnimeCard
+                      key={item.id || i}
+                      anime={item}
+                      index={i}
+                      className="flex-shrink-0 w-32 sm:w-44 snap-start"
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+        )}
       </div>
     );
   };
@@ -141,7 +135,7 @@ const Browse: React.FC = () => {
       {error && (
         <div className="text-center py-20 text-anilist-text">
           <p>{error}</p>
-          <button onClick={() => query ? searchAnime(query) : fetchSchedule()} className="text-anilist-accent mt-2 hover:underline">Try again</button>
+          <button onClick={() => query ? searchAnime(query) : fetchBrowseData()} className="text-anilist-accent mt-2 hover:underline">Try again</button>
         </div>
       )}
 
@@ -150,7 +144,7 @@ const Browse: React.FC = () => {
           {query ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
               {results.map((item, i) => (
-                <AnimeCard key={item.id || i} anime={mapToAnimeCard(item)} index={i} />
+                <AnimeCard key={item.id || i} anime={item} index={i} />
               ))}
               {results.length === 0 && (
                 <div className="col-span-full text-center py-20 text-anilist-text">
@@ -159,7 +153,7 @@ const Browse: React.FC = () => {
               )}
             </div>
           ) : (
-            renderSchedule()
+            renderBrowseSections()
           )}
         </div>
       )}
