@@ -2,26 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Search, X, Loader2, Compass } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AnimeCard from '../components/AnimeCard';
+import { useCache } from '../context/CacheContext';
 
 import { fetchWithProxy } from '../utils/api';
 
 const Browse: React.FC = () => {
+  const { getCache, setCache } = useCache();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [browseData, setBrowseData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  
+  // Initialize loading based on cache existence
+  const [loading, setLoading] = useState(() => !getCache('browseData'));
+  
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query) {
-      fetchBrowseData();
+      const cachedBrowse = getCache('browseData');
+      if (cachedBrowse) {
+        setBrowseData(cachedBrowse);
+        setLoading(false);
+      } else {
+        fetchBrowseData();
+      }
     } else {
       const timer = setTimeout(() => {
         searchAnime(query);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [query]);
+  }, [query, getCache, setCache]);
 
   const fetchBrowseData = async () => {
     setLoading(true);
@@ -32,6 +43,7 @@ const Browse: React.FC = () => {
       const json = await response.json();
       if (json.success && json.results) {
         setBrowseData(json.results);
+        setCache('browseData', json.results);
       } else {
         setBrowseData(null);
       }

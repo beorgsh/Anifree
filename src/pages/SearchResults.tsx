@@ -4,12 +4,14 @@ import AnimeCard from '../components/AnimeCard';
 import { motion } from 'motion/react';
 import { Search } from 'lucide-react';
 import { AnimeCardSkeleton } from '../components/Skeleton';
+import { useCache } from '../context/CacheContext';
 
 import { fetchWithProxy } from '../utils/api';
 
 const SearchResults: React.FC = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
+  const { getCache, setCache } = useCache();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,15 @@ const SearchResults: React.FC = () => {
 
       setLoading(true);
       setError(null);
+      
+      // Check cache
+      const cachedResults = getCache(`search-${query}`);
+      if (cachedResults) {
+        setResults(cachedResults);
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch(`https://anime-api-iota-six.vercel.app/api/search?keyword=${encodeURIComponent(query)}`);
         if (!response.ok) throw new Error('Failed to search anime');
@@ -27,6 +38,7 @@ const SearchResults: React.FC = () => {
         
         if (json.success && json.results && json.results.data) {
           setResults(json.results.data);
+          setCache(`search-${query}`, json.results.data);
         } else {
           setResults([]);
         }
@@ -38,7 +50,7 @@ const SearchResults: React.FC = () => {
       }
     };
     performSearch();
-  }, [query]);
+  }, [query, getCache, setCache]);
 
   return (
     <motion.div 

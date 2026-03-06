@@ -4,16 +4,21 @@ import { Play, Info, ChevronLeft, ChevronRight, TrendingUp, Flame } from 'lucide
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { HeroSkeleton, SectionSkeleton } from '../components/Skeleton';
+import { useCache } from '../context/CacheContext';
 
 import { fetchWithProxy } from '../utils/api';
 
 const Home: React.FC = () => {
+  const { getCache, setCache } = useCache();
   const [trending, setTrending] = useState<any[]>([]);
   const [popular, setPopular] = useState<any[]>([]);
   const [topRated, setTopRated] = useState<any[]>([]);
   const [recentlyUpdated, setRecentlyUpdated] = useState<any[]>([]);
   const [spotlights, setSpotlights] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Initialize loading based on cache existence to prevent flash
+  const [loading, setLoading] = useState(() => !getCache('homeData'));
+  
   const [heroIndex, setHeroIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
@@ -21,6 +26,22 @@ const Home: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setError(null);
+      
+      // Check cache first
+      const cachedData = getCache('homeData');
+      if (cachedData) {
+        setSpotlights(cachedData.spotlights || []);
+        setTrending(cachedData.trending || []);
+        setPopular(cachedData.mostPopular || []);
+        setTopRated(cachedData.topAiring || []);
+        setRecentlyUpdated(cachedData.latestEpisode || []);
+        setLoading(false);
+        // We can return here, but we might want to re-fetch in background if cache is stale?
+        // For now, trust the cache expiration logic in CacheContext (15 mins)
+        return;
+      }
+
+      setLoading(true); // Ensure loading is true if we are fetching
       try {
         const response = await fetch('https://anime-api-iota-six.vercel.app/api');
         if (!response.ok) throw new Error('Failed to fetch anime data');
@@ -32,6 +53,9 @@ const Home: React.FC = () => {
           setPopular(json.results.mostPopular || []);
           setTopRated(json.results.topAiring || []);
           setRecentlyUpdated(json.results.latestEpisode || []);
+          
+          // Save to cache
+          setCache('homeData', json.results);
         } else {
           throw new Error('Invalid data format received');
         }
@@ -43,7 +67,7 @@ const Home: React.FC = () => {
       }
     };
     loadData();
-  }, []);
+  }, [getCache, setCache]);
 
   useEffect(() => {
     if (spotlights.length === 0) return;

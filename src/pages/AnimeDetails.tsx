@@ -8,15 +8,20 @@ import { convertM3U8toMP4 } from '../utils/player';
 type Tab = 'overview' | 'episodes' | 'recommended';
 
 import { motion } from 'motion/react';
+import { useCache } from '../context/CacheContext';
 
 import { fetchWithProxy } from '../utils/api';
 
 const AnimeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { getCache, setCache } = useCache();
   const [anime, setAnime] = useState<any>(null);
   const [seasons, setSeasons] = useState<any[]>([]);
   const [episodes, setEpisodes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Initialize loading based on cache existence
+  const [loading, setLoading] = useState(() => !getCache(`anime-${id}`));
+  
   const [epLoading, setEpLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +36,23 @@ const AnimeDetails: React.FC = () => {
         return;
       }
 
+      // Check cache
+      const cachedAnime = getCache(`anime-${id}`);
+      if (cachedAnime) {
+        setAnime(cachedAnime.anime);
+        setSeasons(cachedAnime.seasons || []);
+        setEpisodes(cachedAnime.episodes || []);
+        setLoading(false);
+        
+        // If episodes were cached, we don't need to fetch them again
+        // But if they weren't (e.g. partial cache), we might want to fetch
+        if (!cachedAnime.episodes || cachedAnime.episodes.length === 0) {
+           const title = cachedAnime.anime.info?.name || cachedAnime.anime.title || cachedAnime.anime.japanese_title;
+           if (title) fetchEpisodes(title, cachedAnime.anime, cachedAnime.seasons);
+        }
+        return;
+      }
+      
       setLoading(true);
       setError(null);
       
@@ -49,8 +71,11 @@ const AnimeDetails: React.FC = () => {
           // This runs in parallel with the state update and rendering
           const title = animeData.info?.name || animeData.title || animeData.japanese_title;
           if (title) {
-            fetchEpisodes(title);
+            fetchEpisodes(title, animeData, data.seasons);
           }
+          
+          // Cache what we have so far (episodes will be added later)
+          setCache(`anime-${id}`, { anime: animeData, seasons: data.seasons });
         } else {
           console.error('Invalid data format:', json);
           throw new Error('Invalid data format received');
@@ -63,9 +88,9 @@ const AnimeDetails: React.FC = () => {
       }
     };
     loadAnime();
-  }, [id]);
+  }, [id, getCache, setCache]);
 
-  const fetchEpisodes = async (title: string) => {
+  const fetchEpisodes = async (title: string, currentAnime?: any, currentSeasons?: any[]) => {
     setEpLoading(true);
     try {
       const targetUrl = `https://animeapi.net/anime/${encodeURIComponent(title)}`;
@@ -77,13 +102,13 @@ const AnimeDetails: React.FC = () => {
 
       // Create a timeout promise to fail fast if proxies are slow
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Proxy timeout')), 8000)
+        setTimeout(() => reject(new Error('Proxy timeout')), 10000) // Increased timeout to 10s
       );
 
       const fetchPromises = proxies.map(async (proxyUrl) => {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout per request
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased per-request timeout to 8s
           
           const response = await fetch(proxyUrl, { signal: controller.signal });
           clearTimeout(timeoutId);
@@ -109,13 +134,29 @@ const AnimeDetails: React.FC = () => {
         
         const fetchedEpisodes = data.results[0].episodes || [];
         setEpisodes(fetchedEpisodes);
+        
+        // Update cache with episodes
+        const animeToCache = currentAnime || anime;
+        const seasonsToCache = currentSeasons || seasons;
+        
+        if (animeToCache) {
+             setCache(`anime-${id}`, { anime: animeToCache, seasons: seasonsToCache, episodes: fetchedEpisodes });
+        }
       } catch (error) {
         console.warn('All proxies failed or timed out fetching episodes');
+        // Don't clear episodes here, in case we have some from cache or previous fetch
       }
     } catch (error) {
       console.error('Failed to fetch episodes:', error);
     } finally {
       setEpLoading(false);
+    }
+  };
+
+  const handleRetryEpisodes = () => {
+    const title = anime?.info?.name || anime?.title || anime?.japanese_title;
+    if (title) {
+      fetchEpisodes(title, anime, seasons);
     }
   };
 
@@ -406,8 +447,14 @@ const AnimeDetails: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12 text-anilist-text text-sm">
-                      No episodes found.
+                    <div className="text-center py-12 text-anilist-text text-sm flex flex-col items-center gap-4">
+                      <p>No episodes found.</p>
+                      <button 
+                        onClick={handleRetryEpisodes}
+                        className="bg-anilist-accent text-black px-4 py-2 rounded-md font-bold text-xs uppercase tracking-wider hover:scale-105 transition-transform"
+                      >
+                        Retry Loading Episodes
+                      </button>
                     </div>
                   )}
                 </div>
