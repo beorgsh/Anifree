@@ -23,7 +23,7 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       customControls.push({
         position: 'top',
         index: 10,
-        html: `<div style="display:flex;align-items:center;gap:12px;padding:10px;cursor:pointer;">
+        html: `<div style="display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:10px;cursor:pointer;width:100%;">
                  ${onBack ? `<div id="back-btn" style="display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></div>` : ''}
                  <div id="lock-btn" style="display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
                  <span style="font-weight:bold;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">${option.title || ''}</span>
@@ -90,6 +90,13 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         console.warn('Screen orientation unlock failed:', err);
       }
     };
+
+    art.on('ready', () => {
+      if (window.innerWidth <= 768) {
+        art.fullscreen = true;
+        lockLandscape();
+      }
+    });
 
     art.on('play', () => {
       // On mobile, playing the video could trigger fullscreen and landscape lock
