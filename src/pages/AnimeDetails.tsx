@@ -129,8 +129,32 @@ const AnimeDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-anilist-accent border-t-transparent"></div>
+      <div className="min-h-screen pb-20 animate-pulse">
+        <div className="h-[30vh] sm:h-[40vh] bg-white/5 w-full"></div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 -mt-10 sm:-mt-32 relative z-10">
+          <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
+            <div className="w-32 sm:w-48 md:w-64 aspect-[2/3] bg-white/10 rounded-lg shadow-2xl flex-shrink-0 mx-auto md:mx-0"></div>
+            <div className="flex-1 pt-4 sm:pt-0 space-y-4 text-center md:text-left">
+              <div className="h-8 sm:h-10 bg-white/10 w-3/4 rounded mx-auto md:mx-0"></div>
+              <div className="h-4 sm:h-6 bg-white/10 w-1/2 rounded mx-auto md:mx-0"></div>
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
+                <div className="h-6 w-16 bg-white/10 rounded"></div>
+                <div className="h-6 w-16 bg-white/10 rounded"></div>
+                <div className="h-6 w-16 bg-white/10 rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-10 h-10 bg-white/10 w-full rounded"></div>
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-4">
+              <div className="h-6 bg-white/10 w-1/4 rounded"></div>
+              <div className="h-4 bg-white/10 w-full rounded"></div>
+              <div className="h-4 bg-white/10 w-full rounded"></div>
+              <div className="h-4 bg-white/10 w-3/4 rounded"></div>
+            </div>
+            <div className="h-64 bg-white/10 rounded-lg"></div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -166,18 +190,36 @@ const AnimeDetails: React.FC = () => {
       className="min-h-screen pb-20"
     >
       {/* Banner / Player Area */}
-      <div className="relative h-[30vh] sm:h-[40vh] w-full overflow-hidden bg-black">
-        {videoUrl ? (
-          <Player 
-            key={videoUrl}
-            option={{
-              url: videoUrl,
-              title: `${info.name} - Episode ${selectedEpisode.episode}`,
-              poster: selectedEpisode.image || info.poster,
-              fullscreen: true,
-            }}
-            className="w-full h-full"
-          />
+      <div className={`relative w-full bg-black transition-all duration-300 ${activeTab === 'episodes' ? 'w-full' : 'h-[30vh] sm:h-[40vh] overflow-hidden'}`}>
+        {activeTab === 'episodes' ? (
+          <div className="w-full mx-auto bg-black">
+            <div className="w-full aspect-video max-h-[75vh] mx-auto relative">
+              {videoUrl ? (
+                <Player 
+                  key={videoUrl}
+                  option={{
+                    url: videoUrl,
+                    title: `${info.name} - Episode ${selectedEpisode.episode}`,
+                    poster: selectedEpisode.image || info.poster,
+                    fullscreen: true,
+                  }}
+                  className="w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-anilist-text p-4 text-center border-b border-white/10">
+                  <Play size={48} className="mb-4 opacity-50" />
+                  <p className="text-lg font-bold">Select an episode to start watching</p>
+                  <p className="text-sm opacity-70 mt-2">Click on any episode from the list below</p>
+                  <img 
+                    src={info.poster} 
+                    alt={info.name}
+                    className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm -z-10"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <>
             <img 
@@ -241,8 +283,8 @@ const AnimeDetails: React.FC = () => {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="mt-16 sm:mt-10 border-b border-white/10 flex overflow-x-auto hide-scrollbar">
+        {/* Tabs - Sticky */}
+        <div className={`mt-16 sm:mt-10 border-b border-white/10 flex overflow-x-auto hide-scrollbar sticky top-0 z-30 bg-anilist-bg/95 backdrop-blur-sm ${activeTab === 'episodes' ? 'mt-0 sm:mt-0 pt-4' : ''}`}>
           {['overview', 'episodes', 'seasons', 'recommended'].map((tab) => (
             <button
               key={tab}
@@ -299,57 +341,77 @@ const AnimeDetails: React.FC = () => {
           )}
 
           {activeTab === 'episodes' && (
-            <div className="space-y-4">
-              {epLoading ? (
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="flex flex-row gap-3 sm:gap-4 p-2 sm:p-3 animate-pulse">
-                      <div className="w-28 sm:w-48 aspect-video flex-shrink-0 rounded-md bg-white/5" />
-                      <div className="flex flex-col justify-center flex-1 min-w-0 gap-2">
-                        <div className="h-4 w-3/4 bg-white/5 rounded" />
-                        <div className="h-3 w-full bg-white/5 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : episodes.length > 0 ? (
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  {episodes.map((ep, index) => (
-                    <button 
-                      onClick={() => handleEpisodeClick(ep)}
-                      key={ep.id} 
-                      className="flex flex-row gap-3 sm:gap-4 p-2 sm:p-3 hover:bg-white/5 rounded-lg transition-colors group border border-transparent hover:border-white/10 w-full text-left"
-                    >
-                      <div className="relative w-28 sm:w-48 aspect-video flex-shrink-0 rounded-md overflow-hidden bg-anilist-fg">
-                        <img 
-                          src={ep.image || info.poster} 
-                          alt={`Episode ${index + 1}`}
-                          className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                          <Play className="text-white w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" />
-                        </div>
-                        <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-black/80 px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold text-white">
-                          {moreInfo.duration || '24m'}
-                        </div>
-                      </div>
-                      <div className="flex flex-col justify-center flex-1 min-w-0">
-                        <h4 className="text-xs sm:text-base font-bold text-anilist-heading line-clamp-1 sm:line-clamp-2">
-                          {index + 1}. {ep.title || `Episode ${index + 1}`}
-                        </h4>
-                        <p className="text-[10px] sm:text-xs text-anilist-text mt-1 sm:mt-2 line-clamp-2 sm:line-clamp-3">
-                          {cleanDescription.substring(0, 150)}...
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-anilist-text text-sm">
-                  No episodes found.
+            <div className="w-full">
+              {selectedEpisode && (
+                <div className="mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                  <h3 className="text-lg font-bold text-anilist-heading">
+                    Episode {selectedEpisode.episode}: {selectedEpisode.title || `Episode ${selectedEpisode.episode}`}
+                  </h3>
+                  <p className="text-sm text-anilist-text mt-2 line-clamp-2">
+                      {cleanDescription}
+                  </p>
                 </div>
               )}
+
+              <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
+                  <h3 className="font-bold text-anilist-heading">Episodes ({episodes.length})</h3>
+                  <span className="text-xs text-anilist-text">Scroll to see more</span>
+                </div>
+                <div className="h-[60vh] overflow-y-auto p-2 custom-scrollbar">
+                  {epLoading ? (
+                    <div className="flex flex-col gap-3">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex gap-3 p-2 animate-pulse">
+                          <div className="w-24 aspect-video rounded bg-white/5" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-3 w-3/4 bg-white/5 rounded" />
+                            <div className="h-2 w-1/2 bg-white/5 rounded" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : episodes.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {episodes.map((ep, index) => (
+                        <button 
+                          onClick={() => handleEpisodeClick(ep)}
+                          key={ep.id} 
+                          className={`flex gap-3 p-2 rounded-lg transition-colors text-left group ${
+                            selectedEpisode?.id === ep.id 
+                              ? 'bg-anilist-accent text-black' 
+                              : 'hover:bg-white/10 text-anilist-text hover:text-anilist-heading'
+                          }`}
+                        >
+                          <div className="relative w-24 aspect-video flex-shrink-0 rounded overflow-hidden bg-black/20">
+                            <img 
+                              src={ep.image || info.poster} 
+                              alt={`Ep ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className={`absolute inset-0 flex items-center justify-center bg-black/40 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                              <Play size={16} fill="currentColor" className={selectedEpisode?.id === ep.id ? 'text-black' : 'text-white'} />
+                            </div>
+                          </div>
+                          <div className="flex flex-col justify-center flex-1 min-w-0">
+                            <h4 className="text-sm font-bold line-clamp-1">
+                              {index + 1}. {ep.title || `Episode ${index + 1}`}
+                            </h4>
+                            <span className={`text-[10px] mt-1 ${selectedEpisode?.id === ep.id ? 'text-black/70' : 'text-anilist-text/70'}`}>
+                              {moreInfo.duration || '24m'}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-anilist-text text-sm">
+                      No episodes found.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
