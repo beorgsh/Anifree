@@ -8,7 +8,6 @@ import SearchResults from './pages/SearchResults';
 import PlaceholderPage from './pages/PlaceholderPage';
 import Browse from './pages/Browse';
 import ScrollToTop from './components/ScrollToTop';
-import { AnimatePresence, motion } from 'motion/react';
 import { TrendingUp, Flame, Compass, Search, Download, List, Settings, Play } from 'lucide-react';
 
 const getHeaderProps = (pathname: string) => {
@@ -26,34 +25,31 @@ const getHeaderProps = (pathname: string) => {
 const AppContent = () => {
   const location = useLocation();
   const isPlayerPage = location.pathname.includes('/watch/');
+  const isAnimeDetailsPage = location.pathname.startsWith('/anime/');
   const isHome = location.pathname === '/';
   const headerProps = getHeaderProps(location.pathname);
 
   return (
     <div className="min-h-screen bg-anilist-bg">
       <ScrollToTop />
-      {!isPlayerPage && (
+      {!isPlayerPage && !isAnimeDetailsPage && (
         isHome ? <Navbar /> : <PageHeader {...headerProps} />
       )}
       <main className={`${!isPlayerPage ? 'pt-20 pb-20 md:pb-0' : ''}`}>
-        <AnimatePresence mode="wait">
-          <motion.div key={location.pathname}>
-            <Routes location={location}>
-              <Route path="/" element={<Home />} />
-              <Route path="/anime/:id" element={<AnimeDetails />} />
-              <Route path="/search" element={<SearchResults />} />
-              <Route path="/trending" element={<Home />} />
-              <Route path="/popular" element={<Home />} />
-              <Route path="/browse" element={<Browse />} />
-              <Route path="/download" element={<PlaceholderPage title="Download" />} />
-              <Route path="/watchlist" element={<PlaceholderPage title="Watch List" />} />
-              <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+        <Routes location={location}>
+          <Route path="/" element={<Home />} />
+          <Route path="/anime/:id" element={<AnimeDetails />} />
+          <Route path="/search" element={<SearchResults />} />
+          <Route path="/trending" element={<Home />} />
+          <Route path="/popular" element={<Home />} />
+          <Route path="/browse" element={<Browse />} />
+          <Route path="/download" element={<PlaceholderPage title="Download" />} />
+          <Route path="/watchlist" element={<PlaceholderPage title="Watch List" />} />
+          <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+        </Routes>
       </main>
       
-      {!isPlayerPage && (
+      {!isPlayerPage && !isAnimeDetailsPage && (
         <>
           <BottomNav />
           <footer className="bg-anilist-bg py-12 mt-10 pb-32 md:pb-12">

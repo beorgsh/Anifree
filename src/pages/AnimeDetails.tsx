@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Star, Calendar, Tv, Play } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Star, Calendar, Tv, Play, ChevronLeft } from 'lucide-react';
 import AnimeCard from '../components/AnimeCard';
 import Player from '../components/Player';
 import { convertM3U8toMP4 } from '../utils/player';
@@ -14,6 +14,7 @@ import { fetchWithProxy } from '../utils/api';
 
 const AnimeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { getCache, setCache } = useCache();
   const [anime, setAnime] = useState<any>(null);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -230,6 +231,13 @@ const AnimeDetails: React.FC = () => {
       exit={{ opacity: 0 }}
       className="min-h-screen pb-20"
     >
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-4 left-4 z-50 p-2 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors"
+      >
+        <ChevronLeft size={24} />
+      </button>
+
       {/* Banner / Player Area */}
       <div className={`relative w-full bg-black transition-all duration-300 ${activeTab === 'episodes' ? 'w-full' : 'h-[30vh] sm:h-[40vh] overflow-hidden'}`}>
         {activeTab === 'episodes' ? (
@@ -266,7 +274,7 @@ const AnimeDetails: React.FC = () => {
             <img 
               src={info.poster} 
               alt={info.name}
-              className="h-full w-full object-cover opacity-30 blur-sm"
+              className="h-full w-full object-cover opacity-40 blur-xs"
               referrerPolicy="no-referrer"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-anilist-bg to-transparent"></div>
@@ -279,7 +287,7 @@ const AnimeDetails: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="flex flex-col md:flex-row gap-6 sm:gap-8">
             {/* Left Column: Poster */}
-            <div className="w-32 sm:w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0">
+            <div className="w-32 sm:w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0 -mt-20 sm:-mt-32 relative z-20">
               <img 
                 src={info.poster} 
                 alt={info.name}
@@ -420,7 +428,7 @@ const AnimeDetails: React.FC = () => {
                           key={ep.id} 
                           className={`flex gap-3 p-2 rounded-lg transition-colors text-left group ${
                             selectedEpisode?.id === ep.id 
-                              ? 'bg-anilist-accent text-black' 
+                              ? 'bg-white/20 text-white' 
                               : 'hover:bg-white/10 text-anilist-text hover:text-anilist-heading'
                           }`}
                         >
@@ -431,15 +439,16 @@ const AnimeDetails: React.FC = () => {
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
                             />
-                            <div className={`absolute inset-0 flex items-center justify-center bg-black/40 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                              <Play size={16} fill="currentColor" className={selectedEpisode?.id === ep.id ? 'text-black' : 'text-white'} />
+                            <div className={`absolute inset-0 flex flex-col items-center justify-center bg-black/60 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                              <Play size={16} fill="currentColor" className="text-white" />
+                              {selectedEpisode?.id === ep.id && <span className="text-[10px] font-bold text-anilist-accent mt-1 uppercase">Playing</span>}
                             </div>
                           </div>
                           <div className="flex flex-col justify-center flex-1 min-w-0">
                             <h4 className="text-sm font-bold line-clamp-1">
                               {index + 1}. {ep.title || `Episode ${index + 1}`}
                             </h4>
-                            <span className={`text-[10px] mt-1 ${selectedEpisode?.id === ep.id ? 'text-black/70' : 'text-anilist-text/70'}`}>
+                            <span className={`text-[10px] mt-1 ${selectedEpisode?.id === ep.id ? 'text-white/70' : 'text-anilist-text/70'}`}>
                               {moreInfo.duration || '24m'}
                             </span>
                           </div>
