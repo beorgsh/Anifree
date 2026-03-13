@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Star } from 'lucide-react';
+import { Play, Star, Captions, Mic } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AnimeCardProps {
@@ -33,21 +33,28 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, className = '', index = 0,
               <Play fill="currentColor" size={24} />
             </div>
           </div>
+          
           {badge && (
             <div className="absolute top-2 right-2 bg-anilist-accent text-black text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter z-10 shadow-lg">
               {badge}
             </div>
           )}
-          {anime.tvInfo?.sub && (
-            <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10">
-              <span className="text-anilist-accent">SUB</span> {anime.tvInfo.sub}
-            </div>
-          )}
-          {anime.tvInfo?.dub && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10">
-              <span className="text-anilist-accent">DUB</span> {anime.tvInfo.dub}
-            </div>
-          )}
+
+          {/* Sub/Dub Indicators - Vertically Aligned */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
+            {anime.tvInfo?.sub && (
+              <div className="flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10 shadow-lg">
+                <Captions size={12} className="text-anilist-accent" />
+                <span>{anime.tvInfo.sub}</span>
+              </div>
+            )}
+            {anime.tvInfo?.dub && (
+              <div className="flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur-sm border border-white/10 shadow-lg">
+                <Mic size={12} className="text-anilist-accent" />
+                <span>{anime.tvInfo.dub}</span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-1">
           <h3 className="line-clamp-2 text-xs sm:text-sm font-semibold text-anilist-heading group-hover:text-anilist-accent transition-colors leading-tight">
