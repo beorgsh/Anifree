@@ -98,9 +98,9 @@ const Navbar: React.FC = () => {
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-2xl bg-white/5 px-14 py-4 text-lg text-anilist-heading outline-none border border-white/10 focus:border-anilist-accent/50 transition-all"
+                    className="w-full rounded-2xl bg-white/5 px-12 py-3 text-base text-anilist-heading outline-none border border-white/10 focus:border-anilist-accent/50 transition-all"
                   />
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-anilist-text" size={24} />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-anilist-text" size={20} />
                   {searchQuery && (
                     <button
                       type="button"

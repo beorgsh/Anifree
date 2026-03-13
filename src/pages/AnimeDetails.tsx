@@ -597,7 +597,7 @@ const AnimeDetails: React.FC = () => {
                           <img 
                             src={season.poster || info.poster} 
                             alt={season.name || season.title}
-                            className="w-full h-full object-cover blur-sm opacity-60 group-hover:opacity-80 transition-opacity"
+                            className="w-full h-full object-cover blur-xs opacity-60 group-hover:opacity-80 transition-opacity"
                             referrerPolicy="no-referrer"
                           />
                           <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors"></div>
@@ -652,7 +652,7 @@ const AnimeDetails: React.FC = () => {
                               </span>
                               <ChevronDown 
                                 size={16} 
-                                className={`text-anilist-text transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} 
+                                className={`text-anilist-text transition-transform duration-300 hidden sm:block ${isDropdownOpen ? 'rotate-180' : ''}`} 
                               />
                             </button>
 
@@ -830,7 +830,7 @@ const AnimeDetails: React.FC = () => {
               {/* Related Anime */}
               {anime.relatedAnimes && anime.relatedAnimes.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Related Anime</h3>
+                  <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Related Anime <span className="text-anilist-text font-normal ml-2">| Related</span></h3>
                   <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar px-4 sm:px-0">
                     {anime.relatedAnimes.map((node: any, i: number) => (
                       <AnimeCard 
