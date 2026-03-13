@@ -183,12 +183,22 @@ const AnimeDetails: React.FC = () => {
     }
   };
 
-  const handleEpisodeClick = (ep: any) => {
+  const handleEpisodeClick = (ep: any, fromPlayer = false) => {
     setSelectedEpisode(ep);
     const m3u8Url = ep.sub?.url || ep.dub?.url;
     const url = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.info?.name, ep.episode) : '';
     setVideoUrl(url);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!fromPlayer) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNextEpisode = () => {
+    if (!selectedEpisode || episodes.length === 0) return;
+    const currentIndex = episodes.findIndex(ep => ep.id === selectedEpisode.id);
+    if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
+      handleEpisodeClick(episodes[currentIndex + 1], true);
+    }
   };
 
   if (loading) {
@@ -266,19 +276,21 @@ const AnimeDetails: React.FC = () => {
       exit={{ opacity: 0 }}
       className={`relative ${activeTab === 'episodes' ? 'h-screen flex flex-col overflow-hidden' : 'min-h-screen pb-10'}`}
     >
-      <button
-        onClick={() => {
-          if (window.history.length > 1) {
-            navigate(-1);
-          } else {
-            navigate('/');
-          }
-        }}
-        className={`${activeTab === 'episodes' ? 'absolute' : 'fixed'} top-4 left-4 z-[100] p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer shadow-lg border border-white/10`}
-        aria-label="Go back"
-      >
-        <ChevronLeft size={24} />
-      </button>
+      {activeTab !== 'episodes' && (
+        <button
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/');
+            }
+          }}
+          className="fixed top-4 left-4 z-[100] p-3 bg-black/50 rounded-full text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer shadow-lg border border-white/10"
+          aria-label="Go back"
+        >
+          <ChevronLeft size={24} />
+        </button>
+      )}
 
       {/* Player Area (Only visible when watching) */}
       <div className={activeTab === 'episodes' ? 'flex-shrink-0' : ''}>
@@ -287,12 +299,21 @@ const AnimeDetails: React.FC = () => {
             <div className="w-full aspect-video max-h-[75vh] mx-auto relative">
               {videoUrl ? (
                 <Player 
-                  key={videoUrl}
                   option={{
                     url: videoUrl,
                     title: `${info.name} - Episode ${selectedEpisode?.episode || ''}`,
                     poster: selectedEpisode?.image || info.poster,
                     fullscreen: true,
+                  }}
+                  animeTitle={info.name}
+                  episodeTitle={`Episode ${selectedEpisode?.episode || ''}${selectedEpisode?.title ? `: ${selectedEpisode.title}` : ''}`}
+                  onNext={handleNextEpisode}
+                  onBack={() => {
+                    if (window.history.length > 1) {
+                      navigate(-1);
+                    } else {
+                      navigate('/');
+                    }
                   }}
                   className="w-full h-full"
                 />

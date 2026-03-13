@@ -10,14 +10,18 @@ interface PlayerProps {
   getInstance?: (player: PlayerType) => void;
   onBack?: () => void;
   onNext?: () => void;
+  animeTitle?: string;
+  episodeTitle?: string;
 }
 
-const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext }) => {
+const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext, animeTitle, episodeTitle }) => {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerType | null>(null);
   const [playerNode, setPlayerNode] = useState<HTMLElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeTimeRef = useRef<number>(0);
 
   useEffect(() => {
     // Make sure Video.js player is only initialized once
@@ -31,6 +35,7 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         controls: true,
         responsive: true,
         fill: true,
+        inactivityTimeout: 4000,
         controlBar: {
           pictureInPictureToggle: false,
           playbackRateMenuButton: false
@@ -52,26 +57,79 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
       });
 
-      // Custom buttons for Back and Next
-      if (onBack) {
-        const Button = videojs.getComponent('Button');
-        const backButton = new Button(player, {
-          className: 'vjs-visible-text vjs-back-button',
-        });
-        (backButton as any).controlText('Back');
-        const icon = document.createElement('span');
-        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 7px;"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
-        backButton.el().appendChild(icon);
-        backButton.on('click', () => {
-          if (player.isFullscreen()) {
-            player.exitFullscreen();
-          } else {
-            onBack();
-          }
-        });
-        (player as any).controlBar.addChild(backButton, {}, 0);
-      }
+      player.on('useractive', () => {
+        activeTimeRef.current = Date.now();
+      });
 
+      // --- Smooth Scrubbing Hack ---
+      const seekBar = (player as any).controlBar?.progressControl?.seekBar;
+      if (seekBar) {
+        let isDragging = false;
+        let dragPercent = 0;
+
+        const origGetPercent = seekBar.getPercent.bind(seekBar);
+        seekBar.getPercent = () => {
+          if (isDragging) {
+            return dragPercent;
+          }
+          return origGetPercent();
+        };
+
+        seekBar.handleMouseMove = (event: any) => {
+          isDragging = true;
+          dragPercent = seekBar.calculateDistance(event);
+          if (seekBar.update) {
+            seekBar.update(event);
+          }
+          
+          const duration = player.duration();
+          if (duration && !isNaN(duration)) {
+            const scrubTime = dragPercent * duration;
+            const formatTime = (seconds: number) => {
+              const h = Math.floor(seconds / 3600);
+              const m = Math.floor((seconds % 3600) / 60);
+              const s = Math.floor(seconds % 60);
+              if (h > 0) {
+                return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+              }
+              return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+
+            const cb = player.getChild('controlBar');
+            if (cb) {
+              const ctd = cb.getChild('currentTimeDisplay');
+              if (ctd) {
+                const el = ctd.contentEl();
+                if (el && el.lastChild && el.lastChild.nodeType === 3) {
+                  el.lastChild.nodeValue = formatTime(scrubTime);
+                }
+              }
+              const rtd = cb.getChild('remainingTimeDisplay');
+              if (rtd) {
+                const el = rtd.contentEl();
+                if (el && el.lastChild && el.lastChild.nodeType === 3) {
+                  el.lastChild.nodeValue = '-' + formatTime(duration - scrubTime);
+                }
+              }
+            }
+          }
+        };
+
+        const origMouseUp = seekBar.handleMouseUp.bind(seekBar);
+        seekBar.handleMouseUp = (event: any) => {
+          if (isDragging) {
+            const duration = player.duration();
+            if (duration && !isNaN(duration)) {
+              player.currentTime(dragPercent * duration);
+            }
+            isDragging = false;
+          }
+          origMouseUp(event);
+        };
+      }
+      // -----------------------------
+
+      // Custom buttons for Back and Next
       const lockLandscape = async () => {
         try {
           if (screen.orientation && (screen.orientation as any).lock) {
@@ -93,7 +151,9 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       };
 
       player.on('fullscreenchange', () => {
-        if (player.isFullscreen()) {
+        const isFs = player.isFullscreen();
+        setIsFullscreen(isFs);
+        if (isFs) {
           lockLandscape();
         } else {
           unlockOrientation();
@@ -101,6 +161,38 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       });
     }
   }, [option, videoRef, onBack, onNext, getInstance]);
+
+  // Update source when option.url changes without unmounting the player
+  useEffect(() => {
+    if (playerRef.current && option.url) {
+      const currentSrc = playerRef.current.src();
+      if (currentSrc !== option.url) {
+        const wasFullscreen = playerRef.current.isFullscreen();
+        
+        playerRef.current.src({
+          src: option.url,
+          type: option.url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+        });
+        if (option.poster) {
+          playerRef.current.poster(option.poster);
+        }
+        
+        playerRef.current.play().catch((e: any) => console.log("Auto-play prevented", e));
+        
+        if (wasFullscreen) {
+          setTimeout(() => {
+            if (playerRef.current && !playerRef.current.isFullscreen()) {
+              try {
+                playerRef.current.requestFullscreen();
+              } catch (e) {
+                console.log("Fullscreen prevented", e);
+              }
+            }
+          }, 100);
+        }
+      }
+    }
+  }, [option.url, option.poster]);
 
   const handleGesture = (e: React.MouseEvent | React.TouchEvent) => {
     const player = playerRef.current;
@@ -140,7 +232,9 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       // Single tap logic: Toggle controls
       if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
       tapTimeoutRef.current = setTimeout(() => {
-        if (player.userActive()) {
+        const timeSinceActive = Date.now() - activeTimeRef.current;
+        // If it was already active for more than 500ms, hide it. Otherwise, keep it active.
+        if (player.userActive() && timeSinceActive > 500) {
           player.userActive(false);
         } else {
           player.userActive(true);
@@ -175,6 +269,31 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
             onClick={handleGesture}
           />
           
+          {/* Top Center Title Overlay */}
+          {(animeTitle || episodeTitle) && (
+            <div className="absolute top-0 left-0 w-full p-4 z-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none flex flex-col items-center justify-start transition-opacity duration-300 vjs-title-overlay">
+              {animeTitle && <h2 className="text-white font-bold text-lg md:text-xl drop-shadow-md text-center">{animeTitle}</h2>}
+              {episodeTitle && <h3 className="text-white/80 font-medium text-sm md:text-base drop-shadow-md text-center">{episodeTitle}</h3>}
+            </div>
+          )}
+
+          {/* Fullscreen Back Button */}
+          {isFullscreen && onBack && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (playerRef.current?.isFullscreen()) {
+                  playerRef.current.exitFullscreen();
+                } else {
+                  onBack();
+                }
+              }}
+              className="absolute top-4 left-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all vjs-back-btn-overlay"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+          )}
+
           {/* Top Right Next Episode Button */}
           {onNext && (
             <button 
@@ -182,10 +301,13 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
                 e.stopPropagation();
                 onNext();
               }}
-              className="absolute top-4 right-4 z-50 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-4 py-2 rounded-lg flex items-center gap-2 transition-all"
+              className="absolute top-4 right-4 z-50 p-3 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all vjs-next-btn-overlay"
+              aria-label="Next Episode"
             >
-              <span className="font-medium text-sm">Next Ep</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 4 15 12 5 20 5 4"/>
+                <line x1="19" y1="5" x2="19" y2="19"/>
+              </svg>
             </button>
           )}
         </>,
@@ -244,6 +366,24 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           width: 100% !important;
         }
 
+        .video-js.vjs-user-inactive .vjs-title-overlay,
+        .video-js.vjs-user-inactive .vjs-back-btn-overlay,
+        .video-js.vjs-user-inactive .vjs-next-btn-overlay {
+          opacity: 0;
+          pointer-events: none !important;
+          transition: opacity 0.5s ease;
+        }
+        .video-js.vjs-user-active .vjs-title-overlay,
+        .video-js.vjs-user-active .vjs-back-btn-overlay,
+        .video-js.vjs-user-active .vjs-next-btn-overlay {
+          opacity: 1;
+          pointer-events: auto;
+          transition: opacity 0.1s ease;
+        }
+        .video-js .vjs-title-overlay {
+          pointer-events: none !important;
+        }
+
         /* Inline Progress Bar */
         .video-js .vjs-progress-control {
           flex: 1 1 auto !important;
@@ -252,7 +392,6 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           min-width: 0 !important;
           height: 30px !important;
           margin: 0 !important;
-          touch-action: none !important;
         }
         .video-js .vjs-progress-control .vjs-progress-holder {
           height: 4px !important;
@@ -262,6 +401,10 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           width: 100% !important;
           position: relative !important;
         }
+        .video-js.vjs-scrubbing .vjs-progress-control .vjs-progress-holder,
+        .video-js.vjs-scrubbing .vjs-play-progress {
+          transition: none !important;
+        }
         .video-js .vjs-progress-control:hover .vjs-progress-holder {
           height: 6px !important;
         }
@@ -269,7 +412,6 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           background-color: #ffffff !important;
           border-radius: 2px !important;
           position: relative !important;
-          transition: none !important;
         }
         .video-js .vjs-play-progress:before {
           content: '' !important;
@@ -282,7 +424,7 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           height: 12px !important;
           background-color: #ffffff !important;
           border-radius: 50% !important;
-          transition: none !important;
+          pointer-events: none !important;
         }
         .video-js .vjs-load-progress {
           background: rgba(255, 255, 255, 0.2) !important;
