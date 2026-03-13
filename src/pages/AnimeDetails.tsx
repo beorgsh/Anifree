@@ -650,10 +650,7 @@ const AnimeDetails: React.FC = () => {
                                 Ep {(currentPage - 1) * episodesPerPage + 1}-{Math.min(currentPage * episodesPerPage, episodes.length)}
                                 <span className="text-anilist-text font-normal ml-1">({episodes.length})</span>
                               </span>
-                              <ChevronDown 
-                                size={16} 
-                                className={`text-anilist-text transition-transform duration-300 hidden sm:block ${isDropdownOpen ? 'rotate-180' : ''}`} 
-                              />
+                              {/* Arrow removed */}
                             </button>
 
                             <AnimatePresence>
@@ -830,7 +827,7 @@ const AnimeDetails: React.FC = () => {
               {/* Related Anime */}
               {anime.relatedAnimes && anime.relatedAnimes.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Related Anime <span className="text-anilist-text font-normal ml-2">| Related</span></h3>
+                  <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Related Anime <span className="text-anilist-text font-normal ml-2">|</span></h3>
                   <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar px-4 sm:px-0">
                     {anime.relatedAnimes.map((node: any, i: number) => (
                       <AnimeCard 
@@ -846,7 +843,7 @@ const AnimeDetails: React.FC = () => {
 
               {/* Recommended Anime */}
               <div>
-                <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Recommended for You</h3>
+                <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Recommended for You <span className="text-anilist-text font-normal ml-2">|</span></h3>
                 <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar px-4 sm:px-0">
                   {anime.recommendedAnimes?.map((node: any, i: number) => (
                     <AnimeCard 

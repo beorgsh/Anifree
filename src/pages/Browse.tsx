@@ -119,9 +119,9 @@ const Browse: React.FC = () => {
             placeholder="Search for anime..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-14 py-4 text-anilist-heading outline-none focus:border-anilist-accent/50 transition-all text-lg"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-12 py-3 text-anilist-heading outline-none focus:border-anilist-accent/50 transition-all text-sm"
           />
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-anilist-text" size={24} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-anilist-text" size={20} />
           <AnimatePresence>
             {query && (
               <motion.button
