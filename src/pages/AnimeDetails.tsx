@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Star, Calendar, Tv, Play, ChevronLeft, ChevronDown, Check, Captions, Mic } from 'lucide-react';
+import { Star, Calendar, Tv, Play, ChevronLeft, ChevronDown, Check, Captions, Mic, Download } from 'lucide-react';
 import AnimeCard from '../components/AnimeCard';
 import Player from '../components/Player';
 import { convertM3U8toMP4 } from '../utils/player';
@@ -561,46 +561,63 @@ const AnimeDetails: React.FC = () => {
 
                     {currentEpisodes.map((ep, index) => {
                       const actualIndex = (currentPage - 1) * episodesPerPage + index;
+                      const m3u8Url = ep.sub?.url || ep.dub?.url;
+                      const downloadUrl = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.info?.name, ep.episode) : '';
+                      
                       return (
-                        <button 
-                          onClick={() => handleEpisodeClick(ep)}
+                        <div 
                           key={ep.id} 
-                          className={`flex gap-4 p-4 transition-colors text-left group border-b border-white/5 hover:bg-white/5 ${
+                          className={`flex items-center gap-4 p-4 transition-colors text-left group border-b border-white/5 hover:bg-white/5 ${
                             selectedEpisode?.id === ep.id ? 'bg-white/5' : ''
                           }`}
                         >
-                          <div className="text-xl font-bold text-anilist-text/50 w-8 flex-shrink-0 flex items-center justify-center">
-                            {actualIndex + 1}
-                          </div>
-                          <div className="relative w-32 aspect-video flex-shrink-0 rounded overflow-hidden bg-black/20">
-                            <img 
-                              src={ep.image || info.poster} 
-                              alt={`Ep ${actualIndex + 1}`}
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className={`absolute inset-0 flex flex-col items-center justify-center bg-black/60 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                              <Play size={20} fill="currentColor" className="text-white" />
+                          <button 
+                            onClick={() => handleEpisodeClick(ep)}
+                            className="flex flex-1 items-center gap-4 min-w-0"
+                          >
+                            <div className="relative w-32 aspect-video flex-shrink-0 rounded overflow-hidden bg-black/20">
+                              <img 
+                                src={ep.image || info.poster} 
+                                alt={`Ep ${actualIndex + 1}`}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className={`absolute inset-0 flex flex-col items-center justify-center bg-black/60 ${selectedEpisode?.id === ep.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                <Play size={20} fill="currentColor" className="text-white" />
+                              </div>
+                              {selectedEpisode?.id === ep.id && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-anilist-accent"></div>
+                              )}
                             </div>
-                            {/* Progress bar simulation (optional) */}
-                            {selectedEpisode?.id === ep.id && (
-                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-anilist-accent"></div>
-                            )}
-                          </div>
-                          <div className="flex flex-col justify-center flex-1 min-w-0 py-1">
-                            <div className="flex justify-between items-start gap-2">
-                              <h4 className={`text-sm sm:text-base font-bold line-clamp-1 ${selectedEpisode?.id === ep.id ? 'text-white' : 'text-anilist-heading'}`}>
-                                {ep.title || `Episode ${actualIndex + 1}`}
-                              </h4>
-                              <span className="text-xs text-anilist-text whitespace-nowrap">
-                                {moreInfo.duration || '24m'}
-                              </span>
+                            <div className="flex flex-col justify-center flex-1 min-w-0 py-1">
+                              <div className="flex justify-between items-start gap-2">
+                                <h4 className={`text-sm sm:text-base font-bold line-clamp-1 ${selectedEpisode?.id === ep.id ? 'text-white' : 'text-anilist-heading'}`}>
+                                  {ep.title || `Episode ${actualIndex + 1}`}
+                                </h4>
+                                <span className="text-xs text-anilist-text whitespace-nowrap">
+                                  {moreInfo.duration || '24m'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-anilist-text mt-2 line-clamp-2 opacity-70">
+                                {cleanDescription}
+                              </p>
                             </div>
-                            <p className="text-xs text-anilist-text mt-2 line-clamp-2 opacity-70">
-                              {cleanDescription}
-                            </p>
-                          </div>
-                        </button>
+                          </button>
+                          
+                          {downloadUrl && (
+                            <a 
+                              href={downloadUrl}
+                              download={`${anime.info?.name}_Episode_${ep.episode}.mp4`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-3 rounded-full bg-white/5 text-anilist-text hover:bg-anilist-accent hover:text-black transition-all shadow-lg border border-white/10"
+                              title="Download MP4"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Download size={18} />
+                            </a>
+                          )}
+                        </div>
                       );
                     })}
 
