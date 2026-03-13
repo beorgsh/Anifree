@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import videojs from 'video.js';
 import type PlayerType from 'video.js/dist/types/player';
 import 'video.js/dist/video-js.css';
@@ -14,7 +15,7 @@ interface PlayerProps {
 const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext }) => {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerType | null>(null);
-  const [showFeedback, setShowFeedback] = useState<'forward' | 'backward' | 'play' | 'pause' | null>(null);
+  const [playerNode, setPlayerNode] = useState<HTMLElement | null>(null);
   const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -30,7 +31,10 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         controls: true,
         responsive: true,
         fill: true,
-        playbackRates: [0.5, 1, 1.5, 2],
+        controlBar: {
+          pictureInPictureToggle: false,
+          playbackRateMenuButton: false
+        },
         userActions: {
           hotkeys: true,
           doubleClick: false
@@ -42,6 +46,7 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         poster: option.poster,
         ...option,
       }, () => {
+        setPlayerNode(player.el());
         if (getInstance) {
           getInstance(player);
         }
@@ -57,24 +62,14 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         const icon = document.createElement('span');
         icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 7px;"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>';
         backButton.el().appendChild(icon);
-        backButton.on('click', () => onBack());
-        (player as any).controlBar.addChild(backButton, {}, 0);
-      }
-
-      if (onNext) {
-        const Button = videojs.getComponent('Button');
-        const nextButton = new Button(player, {
-          className: 'vjs-visible-text vjs-next-button',
+        backButton.on('click', () => {
+          if (player.isFullscreen()) {
+            player.exitFullscreen();
+          } else {
+            onBack();
+          }
         });
-        (nextButton as any).controlText('Next Episode');
-        const label = document.createElement('span');
-        label.innerText = 'Next Ep';
-        label.style.fontSize = '12px';
-        label.style.fontWeight = 'bold';
-        label.style.lineHeight = '30px';
-        nextButton.el().appendChild(label);
-        nextButton.on('click', () => onNext());
-        (player as any).controlBar.addChild(nextButton, {}, 1);
+        (player as any).controlBar.addChild(backButton, {}, 0);
       }
 
       const lockLandscape = async () => {
@@ -127,19 +122,15 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       if (x < width * 0.3) {
         // Left side: Seek backward
         player.currentTime(Math.max(0, player.currentTime() - 10));
-        triggerFeedback('backward');
       } else if (x > width * 0.7) {
         // Right side: Seek forward
         player.currentTime(Math.min(player.duration(), player.currentTime() + 10));
-        triggerFeedback('forward');
       } else {
         // Center: Play/Pause
         if (player.paused()) {
           player.play();
-          triggerFeedback('play');
         } else {
           player.pause();
-          triggerFeedback('pause');
         }
       }
       lastTapRef.current = { time: 0, x: 0 }; // Reset
@@ -159,11 +150,6 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
     }
   };
 
-  const triggerFeedback = (type: 'forward' | 'backward' | 'play' | 'pause') => {
-    setShowFeedback(type);
-    setTimeout(() => setShowFeedback(null), 500);
-  };
-
   // Dispose the player on unmount
   useEffect(() => {
     const player = playerRef.current;
@@ -180,22 +166,30 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
     <div data-vjs-player className={`relative group ${className} w-full h-full flex flex-col`}>
       <div ref={videoRef} className="w-full h-full flex-grow" />
       
-      {/* Gesture Overlay */}
-      <div 
-        className="absolute inset-0 z-10 touch-none"
-        onClick={handleGesture}
-      />
-
-      {/* Feedback UI */}
-      {showFeedback && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/50 backdrop-blur-md rounded-full p-6 animate-ping">
-            {showFeedback === 'forward' && <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>}
-            {showFeedback === 'backward' && <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>}
-            {showFeedback === 'play' && <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>}
-            {showFeedback === 'pause' && <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>}
-          </div>
-        </div>
+      {playerNode && createPortal(
+        <>
+          {/* Gesture Overlay */}
+          <div 
+            className="absolute top-0 left-0 w-full z-10"
+            style={{ height: 'calc(100% - 50px)' }}
+            onClick={handleGesture}
+          />
+          
+          {/* Top Right Next Episode Button */}
+          {onNext && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onNext();
+              }}
+              className="absolute top-4 right-4 z-50 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md px-4 py-2 rounded-lg flex items-center gap-2 transition-all"
+            >
+              <span className="font-medium text-sm">Next Ep</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          )}
+        </>,
+        playerNode
       )}
 
       <style>{`
@@ -227,6 +221,15 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           background-color: rgba(255, 255, 255, 0.2) !important;
           transform: scale(1.1);
         }
+        .video-js.vjs-paused .vjs-big-play-button {
+          display: block !important;
+        }
+
+        /* Hide PiP and Speed Controls */
+        .video-js .vjs-picture-in-picture-control,
+        .video-js .vjs-playback-rate {
+          display: none !important;
+        }
 
         /* Integrated Control Bar */
         .video-js .vjs-control-bar {
@@ -247,15 +250,17 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           display: flex !important;
           align-items: center !important;
           min-width: 0 !important;
-          height: 100% !important;
-          margin: 0 15px !important;
+          height: 30px !important;
+          margin: 0 !important;
+          touch-action: none !important;
         }
         .video-js .vjs-progress-control .vjs-progress-holder {
           height: 4px !important;
           margin: 0 !important;
-          transition: all 0.2s ease !important;
+          transition: height 0.2s ease !important;
           border-radius: 2px !important;
           width: 100% !important;
+          position: relative !important;
         }
         .video-js .vjs-progress-control:hover .vjs-progress-holder {
           height: 6px !important;
@@ -263,11 +268,21 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         .video-js .vjs-play-progress {
           background-color: #ffffff !important;
           border-radius: 2px !important;
+          position: relative !important;
+          transition: none !important;
         }
         .video-js .vjs-play-progress:before {
+          content: '' !important;
           display: block !important;
-          font-size: 1em !important;
-          top: -0.3em !important;
+          position: absolute !important;
+          top: 50% !important;
+          right: -6px !important;
+          transform: translateY(-50%) !important;
+          width: 12px !important;
+          height: 12px !important;
+          background-color: #ffffff !important;
+          border-radius: 50% !important;
+          transition: none !important;
         }
         .video-js .vjs-load-progress {
           background: rgba(255, 255, 255, 0.2) !important;
@@ -299,15 +314,20 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
 
         /* Time Display */
-        .video-js .vjs-current-time, 
-        .video-js .vjs-time-divider, 
-        .video-js .vjs-duration-display {
+        .video-js .vjs-current-time {
           display: block !important;
           line-height: 50px !important;
-          padding: 0 2px !important;
+          padding: 0 10px 0 5px !important;
           font-size: 1.1em !important;
         }
         .video-js .vjs-remaining-time {
+          display: block !important;
+          line-height: 50px !important;
+          padding: 0 5px 0 10px !important;
+          font-size: 1.1em !important;
+        }
+        .video-js .vjs-time-divider, 
+        .video-js .vjs-duration-display {
           display: none !important;
         }
         .video-js .vjs-volume-panel {
