@@ -71,22 +71,18 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
       });
 
-      player.one('canplay', () => {
-        const key = `progress_${animeTitleRef.current}_Episode ${episodeNumberRef.current}`;
-        const savedTime = localStorage.getItem(key);
-        console.log(`Player canplay (one): checking progress for ${key}, found: ${savedTime}`);
-        if (savedTime) {
-          const time = parseFloat(savedTime);
-          console.log(`Player canplay (one): setting currentTime to ${time}`);
-          player.currentTime(time);
-          player.play(); // Ensure it starts playing
-        }
-      });
-
       player.on('timeupdate', () => {
         const currentTime = player.currentTime();
-        if (currentTime && animeTitleRef.current && episodeNumberRef.current) {
-          localStorage.setItem(`progress_${animeTitleRef.current}_Episode ${episodeNumberRef.current}`, currentTime.toString());
+        const title = animeTitleRef.current;
+        const ep = episodeNumberRef.current;
+        
+        if (currentTime > 0 && title && ep) {
+          const key = `progress_${title}_Episode ${ep}`;
+          try {
+            localStorage.setItem(key, currentTime.toString());
+          } catch (e) {
+            // Silently fail if localStorage is blocked
+          }
         }
       });
 
@@ -194,39 +190,50 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
       });
     }
-  }, [option, videoRef, onBack, onNext, getInstance]);
+  }, [videoRef, onBack, onNext, getInstance]);
 
-  // Update source when option.url changes without unmounting the player
+  // Handle progress loading and source updates
   useEffect(() => {
-    if (playerRef.current && option.url) {
-      const currentSrc = playerRef.current.src();
-      if (currentSrc !== option.url) {
-        const wasFullscreen = playerRef.current.isFullscreen();
-        
-        playerRef.current.src({
-          src: option.url,
-          type: option.url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
-        });
-        if (option.poster) {
-          playerRef.current.poster(option.poster);
+    const player = playerRef.current;
+    if (!player || !option.url) return;
+
+    const loadProgress = () => {
+      const key = `progress_${animeTitle}_Episode ${episodeNumber}`;
+      try {
+        const savedTime = localStorage.getItem(key);
+        console.log(`Loading progress for ${key}: ${savedTime}`);
+        if (savedTime) {
+          const time = parseFloat(savedTime);
+          if (!isNaN(time) && time > 0) {
+            player.currentTime(time);
+            player.play().catch(() => {});
+          }
         }
-        
-        playerRef.current.play().catch((e: any) => console.log("Auto-play prevented", e));
-        
-        if (wasFullscreen) {
-          setTimeout(() => {
-            if (playerRef.current && !playerRef.current.isFullscreen()) {
-              try {
-                playerRef.current.requestFullscreen();
-              } catch (e) {
-                console.log("Fullscreen prevented", e);
-              }
-            }
-          }, 100);
-        }
+      } catch (e) {
+        console.error("Failed to load progress", e);
       }
+    };
+
+    const currentSrc = player.src();
+    if (currentSrc !== option.url) {
+      player.src({
+        src: option.url,
+        type: option.url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4'
+      });
+      if (option.poster) {
+        player.poster(option.poster);
+      }
+      
+      // Load progress when the new source is ready
+      player.one('canplay', loadProgress);
+      player.one('loadedmetadata', loadProgress);
+      
+      player.play().catch(() => {});
+    } else {
+      // If source is same but episode changed (unlikely but possible), still try loading progress
+      player.one('canplay', loadProgress);
     }
-  }, [option.url, option.poster]);
+  }, [option.url, option.poster, animeTitle, episodeNumber]);
 
   const handleGesture = (e: React.MouseEvent | React.TouchEvent) => {
     const player = playerRef.current;
@@ -342,12 +349,12 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
                       }
                     }}
                     disabled={!(hasSub && hasDub)}
-                    className={`relative w-16 h-8 rounded-full transition-colors border-2 border-white bg-black/50 ${
-                      !(hasSub && hasDub) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-black/70'
+                    className={`relative w-16 h-8 rounded-full transition-all border border-white/20 bg-black/40 flex items-center ${
+                      !(hasSub && hasDub) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-black/60 shadow-[0_0_0_1px_rgba(255,255,255,0.1)]'
                     }`}
                     aria-label="Toggle Sub/Dub"
                   >
-                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-[9px] font-bold text-black transform transition-transform duration-300 ease-in-out ${currentAudio === 'dub' ? 'translate-x-9' : 'translate-x-1'}`}>
+                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center text-[9px] font-bold text-black transform transition-transform duration-300 ease-in-out ${currentAudio === 'dub' ? 'translate-x-8' : 'translate-x-0.5'}`}>
                       {currentAudio === 'dub' ? 'DUB' : 'SUB'}
                     </div>
                   </button>

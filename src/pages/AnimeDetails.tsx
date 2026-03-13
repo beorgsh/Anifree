@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Star, Calendar, Tv, Play, ChevronLeft, ChevronDown, Check, Captions, Mic, Download } from 'lucide-react';
 import AnimeCard from '../components/AnimeCard';
@@ -34,6 +34,17 @@ const AnimeDetails: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const episodesPerPage = 30;
+
+  const playerOption = useMemo(() => {
+    if (!anime) return null;
+    const info = anime.info || {};
+    return {
+      url: videoUrl,
+      title: `${info.name} - Episode ${selectedEpisode?.episode || ''}`,
+      poster: selectedEpisode?.image || info.poster,
+      fullscreen: true,
+    };
+  }, [videoUrl, anime, selectedEpisode]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,18 +123,24 @@ const AnimeDetails: React.FC = () => {
         const animeData = data.anime || data.data || (data.info ? data : null);
 
         if (animeData) {
-          setAnime(animeData);
+          // Merge related and recommended into animeData if they exist in data
+          const enrichedAnime = {
+            ...animeData,
+            relatedAnimes: data.relatedAnimes || animeData.relatedAnimes || [],
+            recommendedAnimes: data.recommendedAnimes || animeData.recommendedAnimes || []
+          };
+          
+          setAnime(enrichedAnime);
           setSeasons(data.seasons || []);
           
           // Start fetching episodes immediately after getting the title
-          // This runs in parallel with the state update and rendering
-          const title = animeData.info?.name || animeData.title || animeData.japanese_title;
+          const title = enrichedAnime.info?.name || enrichedAnime.title || enrichedAnime.japanese_title;
           if (title) {
-            fetchEpisodes(title, animeData, data.seasons);
+            fetchEpisodes(title, enrichedAnime, data.seasons);
           }
           
-          // Cache what we have so far (episodes will be added later)
-          setCache(`anime-${id}`, { anime: animeData, seasons: data.seasons });
+          // Cache what we have so far
+          setCache(`anime-${id}`, { anime: enrichedAnime, seasons: data.seasons });
         } else {
           console.error('Invalid data format:', json);
           throw new Error('Invalid data format received');
@@ -343,14 +360,9 @@ const AnimeDetails: React.FC = () => {
         {activeTab === 'episodes' ? (
           <div id="video-player-section" className="w-full bg-black">
             <div className="w-full aspect-video max-h-[75vh] mx-auto relative">
-              {videoUrl ? (
+              {videoUrl && playerOption ? (
                 <Player 
-                  option={{
-                    url: videoUrl,
-                    title: `${info.name} - Episode ${selectedEpisode?.episode || ''}`,
-                    poster: selectedEpisode?.image || info.poster,
-                    fullscreen: true,
-                  }}
+                  option={playerOption}
                   animeTitle={info.name}
                   episodeTitle={`Episode ${selectedEpisode?.episode || ''}${selectedEpisode?.title ? `: ${selectedEpisode.title}` : ''}`}
                   episodeNumber={selectedEpisode?.episode}
@@ -690,12 +702,12 @@ const AnimeDetails: React.FC = () => {
                         <button
                           onClick={toggleAudio}
                           disabled={!canToggleGlobal}
-                          className={`relative w-20 h-9 rounded-full transition-colors border border-white/20 bg-black/50 ${
+                          className={`relative w-16 h-8 sm:w-20 sm:h-9 rounded-full transition-colors border border-white/20 bg-black/50 ${
                             !canToggleGlobal ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-black/70'
                           }`}
                           aria-label="Toggle Sub/Dub"
                         >
-                          <div className={`absolute top-0.5 left-1 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-[10px] font-bold text-black transform transition-transform duration-300 ease-in-out ${audioPref === 'dub' ? 'translate-x-11' : 'translate-x-0'}`}>
+                          <div className={`absolute top-1 left-0.5 sm:left-1 w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-md flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-black transform transition-transform duration-300 ease-in-out ${audioPref === 'dub' ? 'translate-x-8.5 sm:translate-x-11' : 'translate-x-0'}`}>
                             {audioPref === 'dub' ? 'DUB' : 'SUB'}
                           </div>
                         </button>
@@ -814,20 +826,43 @@ const AnimeDetails: React.FC = () => {
           )}
 
           {activeTab === 'recommended' && (
-            <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar">
-              {anime.recommendedAnimes?.map((node: any, i: number) => (
-                <AnimeCard 
-                  key={node.id} 
-                  anime={node} 
-                  index={i}
-                  className="flex-shrink-0 w-32 sm:w-44 md:w-48 lg:w-56 snap-start"
-                />
-              ))}
-              {(!anime.recommendedAnimes || anime.recommendedAnimes.length === 0) && (
-                <div className="w-full text-center py-12 text-anilist-text text-xs sm:text-sm">
-                  No recommendations found.
+            <div className="space-y-8">
+              {/* Related Anime */}
+              {anime.relatedAnimes && anime.relatedAnimes.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Related Anime</h3>
+                  <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar px-4 sm:px-0">
+                    {anime.relatedAnimes.map((node: any, i: number) => (
+                      <AnimeCard 
+                        key={node.id} 
+                        anime={node} 
+                        index={i}
+                        className="flex-shrink-0 w-32 sm:w-44 md:w-48 lg:w-56 snap-start"
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Recommended Anime */}
+              <div>
+                <h3 className="text-lg font-bold text-anilist-heading mb-4 px-4 sm:px-0">Recommended for You</h3>
+                <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-6 snap-x snap-mandatory hide-scrollbar px-4 sm:px-0">
+                  {anime.recommendedAnimes?.map((node: any, i: number) => (
+                    <AnimeCard 
+                      key={node.id} 
+                      anime={node} 
+                      index={i}
+                      className="flex-shrink-0 w-32 sm:w-44 md:w-48 lg:w-56 snap-start"
+                    />
+                  ))}
+                  {(!anime.recommendedAnimes || anime.recommendedAnimes.length === 0) && (
+                    <div className="w-full text-center py-12 text-anilist-text text-xs sm:text-sm">
+                      No recommendations found.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
