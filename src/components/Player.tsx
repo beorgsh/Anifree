@@ -12,15 +12,25 @@ interface PlayerProps {
   onNext?: () => void;
   animeTitle?: string;
   episodeTitle?: string;
+  episodeNumber?: number | string;
   hasSub?: boolean;
   hasDub?: boolean;
   currentAudio?: 'sub' | 'dub';
   onToggleAudio?: () => void;
+  onExitFullscreen?: () => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext, animeTitle, episodeTitle, hasSub, hasDub, currentAudio, onToggleAudio }) => {
+const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext, animeTitle, episodeTitle, episodeNumber, hasSub, hasDub, currentAudio, onToggleAudio, onExitFullscreen }) => {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerType | null>(null);
+  const animeTitleRef = useRef(animeTitle);
+  const episodeNumberRef = useRef(episodeNumber);
+
+  useEffect(() => {
+    animeTitleRef.current = animeTitle;
+    episodeNumberRef.current = episodeNumber;
+  }, [animeTitle, episodeNumber]);
+
   const [playerNode, setPlayerNode] = useState<HTMLElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
@@ -58,6 +68,25 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         setPlayerNode(player.el());
         if (getInstance) {
           getInstance(player);
+        }
+      });
+
+      player.one('canplay', () => {
+        const key = `progress_${animeTitleRef.current}_Episode ${episodeNumberRef.current}`;
+        const savedTime = localStorage.getItem(key);
+        console.log(`Player canplay (one): checking progress for ${key}, found: ${savedTime}`);
+        if (savedTime) {
+          const time = parseFloat(savedTime);
+          console.log(`Player canplay (one): setting currentTime to ${time}`);
+          player.currentTime(time);
+          player.play(); // Ensure it starts playing
+        }
+      });
+
+      player.on('timeupdate', () => {
+        const currentTime = player.currentTime();
+        if (currentTime && animeTitleRef.current && episodeNumberRef.current) {
+          localStorage.setItem(`progress_${animeTitleRef.current}_Episode ${episodeNumberRef.current}`, currentTime.toString());
         }
       });
 
@@ -161,6 +190,7 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           lockLandscape();
         } else {
           unlockOrientation();
+          if (onExitFullscreen) onExitFullscreen();
         }
       });
     }
@@ -307,16 +337,19 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (hasSub && hasDub && onToggleAudio) {
+                      if (onToggleAudio) {
                         onToggleAudio();
                       }
                     }}
                     disabled={!(hasSub && hasDub)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider backdrop-blur-sm transition-all ${
-                      !(hasSub && hasDub) ? 'bg-black/40 text-white/50 cursor-not-allowed' : 'bg-anilist-accent text-black hover:scale-105 shadow-lg'
+                    className={`relative w-16 h-8 rounded-full transition-colors border-2 border-white bg-black/50 ${
+                      !(hasSub && hasDub) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-black/70'
                     }`}
+                    aria-label="Toggle Sub/Dub"
                   >
-                    {currentAudio === 'dub' ? 'DUB' : 'SUB'}
+                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-[9px] font-bold text-black transform transition-transform duration-300 ease-in-out ${currentAudio === 'dub' ? 'translate-x-9' : 'translate-x-1'}`}>
+                      {currentAudio === 'dub' ? 'DUB' : 'SUB'}
+                    </div>
                   </button>
                 )}
 
