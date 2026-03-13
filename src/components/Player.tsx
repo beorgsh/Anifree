@@ -12,9 +12,13 @@ interface PlayerProps {
   onNext?: () => void;
   animeTitle?: string;
   episodeTitle?: string;
+  hasSub?: boolean;
+  hasDub?: boolean;
+  currentAudio?: 'sub' | 'dub';
+  onToggleAudio?: () => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext, animeTitle, episodeTitle }) => {
+const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack, onNext, animeTitle, episodeTitle, hasSub, hasDub, currentAudio, onToggleAudio }) => {
   const videoRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlayerType | null>(null);
   const [playerNode, setPlayerNode] = useState<HTMLElement | null>(null);
@@ -269,46 +273,70 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
             onClick={handleGesture}
           />
           
-          {/* Top Center Title Overlay */}
-          {(animeTitle || episodeTitle) && (
-            <div className="absolute top-0 left-0 w-full p-4 z-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none flex flex-col items-center justify-start transition-opacity duration-300 vjs-title-overlay">
-              {animeTitle && <h2 className="text-white font-bold text-lg md:text-xl drop-shadow-md text-center">{animeTitle}</h2>}
-              {episodeTitle && <h3 className="text-white/80 font-medium text-sm md:text-base drop-shadow-md text-center">{episodeTitle}</h3>}
+          {/* Top Bar Overlay (Fullscreen Only) */}
+          {isFullscreen && (
+            <div className="absolute top-0 left-0 w-full p-4 z-40 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between transition-opacity duration-300 vjs-title-overlay pointer-events-none">
+              
+              {/* Left Side: Back Button & Title */}
+              <div className="flex items-center gap-4 pointer-events-auto">
+                {onBack && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (playerRef.current?.isFullscreen()) {
+                        playerRef.current.exitFullscreen();
+                      } else {
+                        onBack();
+                      }
+                    }}
+                    className="p-2 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                )}
+                
+                <div className="flex flex-col text-left">
+                  {animeTitle && <h2 className="text-white font-bold text-sm md:text-lg drop-shadow-md line-clamp-1">{animeTitle}</h2>}
+                  {episodeTitle && <h3 className="text-white/80 font-medium text-xs md:text-sm drop-shadow-md line-clamp-1">{episodeTitle}</h3>}
+                </div>
+              </div>
+
+              {/* Right Side: Sub/Dub Toggle & Next Button */}
+              <div className="flex items-center gap-3 pointer-events-auto">
+                {(hasSub || hasDub) && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (hasSub && hasDub && onToggleAudio) {
+                        onToggleAudio();
+                      }
+                    }}
+                    disabled={!(hasSub && hasDub)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider backdrop-blur-sm transition-all ${
+                      !(hasSub && hasDub) ? 'bg-black/40 text-white/50 cursor-not-allowed' : 'bg-anilist-accent text-black hover:scale-105 shadow-lg'
+                    }`}
+                  >
+                    {currentAudio === 'dub' ? 'DUB' : 'SUB'}
+                  </button>
+                )}
+
+                {onNext && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNext();
+                    }}
+                    className="p-3 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all flex items-center justify-center"
+                    aria-label="Next Episode"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 4 15 12 5 20 5 4"/>
+                      <line x1="19" y1="5" x2="19" y2="19"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-
-          {/* Fullscreen Back Button */}
-          {isFullscreen && onBack && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (playerRef.current?.isFullscreen()) {
-                  playerRef.current.exitFullscreen();
-                } else {
-                  onBack();
-                }
-              }}
-              className="absolute top-4 left-4 z-50 p-2 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all vjs-back-btn-overlay"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-          )}
-
-          {/* Top Right Next Episode Button */}
-          {onNext && (
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onNext();
-              }}
-              className="absolute top-4 right-4 z-50 p-3 bg-black/40 hover:bg-black/60 text-white backdrop-blur-md rounded-full transition-all vjs-next-btn-overlay"
-              aria-label="Next Episode"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 4 15 12 5 20 5 4"/>
-                <line x1="19" y1="5" x2="19" y2="19"/>
-              </svg>
-            </button>
           )}
         </>,
         playerNode
@@ -373,15 +401,15 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           pointer-events: none !important;
           transition: opacity 0.5s ease;
         }
-        .video-js.vjs-user-active .vjs-title-overlay,
+        .video-js.vjs-user-active .vjs-title-overlay {
+          opacity: 1;
+          transition: opacity 0.1s ease;
+        }
         .video-js.vjs-user-active .vjs-back-btn-overlay,
         .video-js.vjs-user-active .vjs-next-btn-overlay {
           opacity: 1;
           pointer-events: auto;
           transition: opacity 0.1s ease;
-        }
-        .video-js .vjs-title-overlay {
-          pointer-events: none !important;
         }
 
         /* Inline Progress Bar */

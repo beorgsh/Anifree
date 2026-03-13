@@ -29,6 +29,7 @@ const AnimeDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
   const [videoUrl, setVideoUrl] = useState<string>('');
+  const [audioPref, setAudioPref] = useState<'sub' | 'dub'>('sub');
   const [currentPage, setCurrentPage] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -183,14 +184,30 @@ const AnimeDetails: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (selectedEpisode && anime?.info?.name) {
+      let targetAudio = audioPref;
+      if (targetAudio === 'sub' && !selectedEpisode.sub?.url && selectedEpisode.dub?.url) {
+        targetAudio = 'dub';
+      } else if (targetAudio === 'dub' && !selectedEpisode.dub?.url && selectedEpisode.sub?.url) {
+        targetAudio = 'sub';
+      }
+      
+      const m3u8Url = targetAudio === 'sub' ? selectedEpisode.sub?.url : selectedEpisode.dub?.url;
+      const url = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.info?.name, selectedEpisode.episode) : '';
+      setVideoUrl(url);
+    }
+  }, [selectedEpisode, audioPref, anime?.info?.name]);
+
   const handleEpisodeClick = (ep: any, fromPlayer = false) => {
     setSelectedEpisode(ep);
-    const m3u8Url = ep.sub?.url || ep.dub?.url;
-    const url = m3u8Url ? convertM3U8toMP4(m3u8Url, anime.info?.name, ep.episode) : '';
-    setVideoUrl(url);
     if (!fromPlayer) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const toggleAudio = () => {
+    setAudioPref(prev => prev === 'sub' ? 'dub' : 'sub');
   };
 
   const handleNextEpisode = () => {
@@ -307,7 +324,11 @@ const AnimeDetails: React.FC = () => {
                   }}
                   animeTitle={info.name}
                   episodeTitle={`Episode ${selectedEpisode?.episode || ''}${selectedEpisode?.title ? `: ${selectedEpisode.title}` : ''}`}
-                  onNext={handleNextEpisode}
+                  onNext={
+                    episodes.findIndex(ep => ep.id === selectedEpisode?.id) < episodes.length - 1 
+                      ? handleNextEpisode 
+                      : undefined
+                  }
                   onBack={() => {
                     if (window.history.length > 1) {
                       navigate(-1);
@@ -315,6 +336,10 @@ const AnimeDetails: React.FC = () => {
                       navigate('/');
                     }
                   }}
+                  hasSub={!!selectedEpisode?.sub?.url}
+                  hasDub={!!selectedEpisode?.dub?.url}
+                  currentAudio={audioPref}
+                  onToggleAudio={toggleAudio}
                   className="w-full h-full"
                 />
               ) : (
@@ -409,7 +434,7 @@ const AnimeDetails: React.FC = () => {
       {/* Tabs Header (Full Width) */}
       <div className={`flex-shrink-0 ${activeTab === 'episodes' ? 'relative' : 'sticky top-0'} z-30 w-full bg-black/80 backdrop-blur-md border-b border-white/10 transition-all duration-300 ${activeTab === 'episodes' ? 'shadow-xl' : ''}`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex overflow-x-auto hide-scrollbar">
-          {['overview', 'episodes', 'seasons', 'recommended'].map((tab) => (
+          {['overview', 'episodes', 'recommended'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -501,14 +526,50 @@ const AnimeDetails: React.FC = () => {
 
           {activeTab === 'episodes' && (
             <div className="w-full">
-              {selectedEpisode && (
+              {seasons && seasons.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg sm:text-xl font-bold text-anilist-heading mb-2">
-                    Episode {selectedEpisode.episode}: {selectedEpisode.title || `Episode ${selectedEpisode.episode}`}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-anilist-text line-clamp-3 leading-relaxed">
-                      {cleanDescription}
-                  </p>
+                  <h3 className="text-lg sm:text-xl font-bold text-anilist-heading mb-4 px-4 sm:px-0">Seasons</h3>
+                  <div className="flex overflow-x-auto gap-4 pb-4 px-4 sm:px-0 snap-x hide-scrollbar">
+                    {seasons.map((season: any) => (
+                      <div 
+                        onClick={() => {
+                          if (!season.isCurrent) {
+                            setAnime(null);
+                            setLoading(true);
+                            navigate(`/anime/${season.id}`);
+                            window.scrollTo(0, 0);
+                          }
+                        }}
+                        key={season.id}
+                        className={`relative flex-shrink-0 w-48 sm:w-64 h-28 sm:h-36 rounded-xl overflow-hidden cursor-pointer group border-2 transition-all snap-start ${
+                          season.isCurrent ? 'border-anilist-accent shadow-[0_0_15px_rgba(61,180,242,0.3)]' : 'border-transparent hover:border-white/20'
+                        }`}
+                      >
+                        {/* Background Image with Blur */}
+                        <div className="absolute inset-0">
+                          <img 
+                            src={season.poster || info.poster} 
+                            alt={season.name || season.title}
+                            className="w-full h-full object-cover blur-sm opacity-60 group-hover:opacity-80 transition-opacity"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors"></div>
+                        </div>
+
+                        {/* Content Overlay */}
+                        <div className="absolute inset-0 flex flex-col justify-end p-3 sm:p-4 z-10">
+                          <h4 className="font-black text-sm sm:text-base text-white line-clamp-2 drop-shadow-md">
+                            {season.name || season.title}
+                          </h4>
+                          {season.isCurrent && (
+                            <span className="absolute top-2 right-2 bg-anilist-accent text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
+                              CURRENT
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -588,8 +649,8 @@ const AnimeDetails: React.FC = () => {
                       return (
                         <div 
                           key={ep.id} 
-                          className={`flex items-center gap-4 p-4 transition-colors text-left group border-b border-white/5 hover:bg-white/5 ${
-                            selectedEpisode?.id === ep.id ? 'bg-white/5' : ''
+                          className={`flex items-center gap-4 p-4 transition-all text-left group border-b border-white/5 hover:bg-white/5 rounded-xl ${
+                            selectedEpisode?.id === ep.id ? 'bg-white/10 border border-anilist-accent shadow-[0_0_10px_rgba(61,180,242,0.2)]' : 'border border-transparent'
                           }`}
                         >
                           <button 
@@ -677,59 +738,6 @@ const AnimeDetails: React.FC = () => {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {activeTab === 'seasons' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {seasons.length > 0 ? (
-                seasons.map((season: any) => (
-                  <div 
-                    onClick={() => {
-                        setAnime(null);
-                        setLoading(true);
-                        navigate(`/anime/${season.id}`);
-                    }}
-                    key={season.id}
-                    className={`relative h-24 sm:h-32 rounded-xl overflow-hidden cursor-pointer group border border-white/10 transition-transform hover:scale-[1.02] ${
-                      season.isCurrent ? 'ring-2 ring-anilist-accent' : ''
-                    }`}
-                  >
-                    {/* Background Image with Blur */}
-                    <div className="absolute inset-0">
-                      <img 
-                        src={season.poster || info.poster} 
-                        alt={season.name || season.title}
-                        className="w-full h-full object-cover blur-sm opacity-60 group-hover:opacity-80 transition-opacity"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors"></div>
-                    </div>
-
-                    {/* Content Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-between p-4 sm:p-6 z-10">
-                      <div className="flex-1 min-w-0 pr-4">
-                        <h4 className="font-black text-sm sm:text-lg text-white truncate drop-shadow-md">
-                          {season.name || season.title}
-                        </h4>
-                        <p className="text-xs sm:text-sm text-white/80 truncate mt-1 drop-shadow-sm">
-                          {season.title || season.name}
-                        </p>
-                      </div>
-                      
-                      {season.isCurrent && (
-                        <div className="flex-shrink-0 bg-anilist-accent text-black text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-                          CURRENT
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12 text-anilist-text text-xs sm:text-sm">
-                  No seasons found.
-                </div>
-              )}
             </div>
           )}
 
