@@ -29,10 +29,11 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         autoplay: true,
         controls: true,
         responsive: true,
-        fluid: true,
+        fill: true,
         playbackRates: [0.5, 1, 1.5, 2],
         userActions: {
-          hotkeys: true
+          hotkeys: true,
+          doubleClick: false
         },
         sources: option.url ? [{
           src: option.url,
@@ -176,12 +177,12 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
   }, [playerRef]);
 
   return (
-    <div data-vjs-player className={`relative group ${className}`}>
-      <div ref={videoRef} />
+    <div data-vjs-player className={`relative group ${className} w-full h-full flex flex-col`}>
+      <div ref={videoRef} className="w-full h-full flex-grow" />
       
       {/* Gesture Overlay */}
       <div 
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-10 touch-none"
         onClick={handleGesture}
       />
 
@@ -201,10 +202,15 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         .video-js {
           background-color: #000;
           font-family: 'Inter', sans-serif;
+          width: 100% !important;
+          height: 100% !important;
+          position: absolute !important;
+          top: 0;
+          left: 0;
         }
         
         /* Minimal Big Play Button */
-        .vjs-big-play-button {
+        .video-js .vjs-big-play-button {
           background-color: rgba(255, 255, 255, 0.1) !important;
           backdrop-filter: blur(8px);
           border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -223,87 +229,100 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
 
         /* Integrated Control Bar */
-        .vjs-control-bar {
-          background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%) !important;
-          height: auto !important;
-          min-height: 50px !important;
+        .video-js .vjs-control-bar {
+          background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%) !important;
+          height: 50px !important;
           display: flex !important;
-          flex-wrap: wrap !important;
           align-items: center !important;
-          padding: 0 !important;
+          padding: 0 15px !important;
           z-index: 40 !important;
+          bottom: 0 !important;
+          position: absolute !important;
+          width: 100% !important;
         }
 
-        /* Progress Bar Positioned Better */
-        .vjs-progress-control {
-          flex: 1 1 100% !important;
-          order: -1 !important;
-          width: 100% !important;
-          height: 4px !important;
+        /* Inline Progress Bar */
+        .video-js .vjs-progress-control {
+          flex: 1 1 auto !important;
           display: flex !important;
           align-items: center !important;
-          transition: all 0.2s ease !important;
-          cursor: pointer !important;
-          position: relative !important;
-          top: 0 !important;
-          left: 0 !important;
-        }
-        .vjs-progress-control:hover {
-          height: 8px !important;
-        }
-        .vjs-progress-holder {
-          margin: 0 !important;
+          min-width: 0 !important;
           height: 100% !important;
+          margin: 0 15px !important;
         }
-        .vjs-play-progress {
-          background-color: #ffffff !important;
-        }
-        .vjs-play-progress:before {
-          display: none !important;
-        }
-        .vjs-load-progress {
-          background: rgba(255, 255, 255, 0.2) !important;
-        }
-        .vjs-slider {
-          background: rgba(255, 255, 255, 0.1) !important;
+        .video-js .vjs-progress-control .vjs-progress-holder {
+          height: 4px !important;
           margin: 0 !important;
+          transition: all 0.2s ease !important;
+          border-radius: 2px !important;
+          width: 100% !important;
+        }
+        .video-js .vjs-progress-control:hover .vjs-progress-holder {
+          height: 6px !important;
+        }
+        .video-js .vjs-play-progress {
+          background-color: #ffffff !important;
+          border-radius: 2px !important;
+        }
+        .video-js .vjs-play-progress:before {
+          display: block !important;
+          font-size: 1em !important;
+          top: -0.3em !important;
+        }
+        .video-js .vjs-load-progress {
+          background: rgba(255, 255, 255, 0.2) !important;
+          border-radius: 2px !important;
+        }
+        .video-js .vjs-slider {
+          background: rgba(255, 255, 255, 0.1) !important;
+          border-radius: 2px !important;
         }
 
         /* Control Icons */
-        .vjs-button > .vjs-icon-placeholder:before {
-          font-size: 1.6em !important;
+        .video-js .vjs-button > .vjs-icon-placeholder:before {
+          font-size: 1.8em !important;
           line-height: 50px !important;
         }
-        .vjs-button {
+        .video-js .vjs-button {
           height: 50px !important;
+          width: 40px !important;
         }
         
         /* Custom Buttons */
-        .vjs-back-button, .vjs-next-button {
+        .video-js .vjs-back-button, .video-js .vjs-next-button {
           width: 3em !important;
           opacity: 0.8;
           transition: opacity 0.2s;
         }
-        .vjs-back-button:hover, .vjs-next-button:hover {
+        .video-js .vjs-back-button:hover, .video-js .vjs-next-button:hover {
           opacity: 1;
         }
 
-        /* Hide unnecessary elements */
-        .vjs-remaining-time, .vjs-volume-panel {
-          display: flex !important;
+        /* Time Display */
+        .video-js .vjs-current-time, 
+        .video-js .vjs-time-divider, 
+        .video-js .vjs-duration-display {
+          display: block !important;
+          line-height: 50px !important;
+          padding: 0 2px !important;
+          font-size: 1.1em !important;
         }
-        .vjs-current-time, .vjs-time-divider, .vjs-duration-display {
+        .video-js .vjs-remaining-time {
           display: none !important;
+        }
+        .video-js .vjs-volume-panel {
+          display: flex !important;
+          align-items: center !important;
         }
 
         /* Subtitles Positioning */
-        .vjs-text-track-display {
+        .video-js .vjs-text-track-display {
           bottom: 60px !important;
         }
 
         /* Mobile Adjustments */
         @media (max-width: 768px) {
-          .vjs-big-play-button {
+          .video-js .vjs-big-play-button {
             width: 60px !important;
             height: 60px !important;
             line-height: 60px !important;
