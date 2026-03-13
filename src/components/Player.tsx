@@ -183,7 +183,6 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
       <div 
         className="absolute inset-0 z-10"
         onClick={handleGesture}
-        onTouchStart={handleGesture}
       />
 
       {/* Feedback UI */}
@@ -226,28 +225,35 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         /* Integrated Control Bar */
         .vjs-control-bar {
           background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%) !important;
-          height: 50px !important;
-          padding: 0 10px !important;
+          height: auto !important;
+          min-height: 50px !important;
           display: flex !important;
+          flex-wrap: wrap !important;
           align-items: center !important;
+          padding: 0 !important;
           z-index: 40 !important;
-          bottom: 0 !important;
-          position: absolute !important;
-          width: 100% !important;
         }
 
         /* Progress Bar Positioned Better */
         .vjs-progress-control {
-          position: absolute !important;
+          flex: 1 1 100% !important;
+          order: -1 !important;
           width: 100% !important;
           height: 4px !important;
-          bottom: 50px !important;
-          left: 0 !important;
+          display: flex !important;
+          align-items: center !important;
           transition: all 0.2s ease !important;
-          z-index: 50 !important;
+          cursor: pointer !important;
+          position: relative !important;
+          top: 0 !important;
+          left: 0 !important;
         }
         .vjs-progress-control:hover {
-          height: 6px !important;
+          height: 8px !important;
+        }
+        .vjs-progress-holder {
+          margin: 0 !important;
+          height: 100% !important;
         }
         .vjs-play-progress {
           background-color: #ffffff !important;
@@ -268,6 +274,9 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
           font-size: 1.6em !important;
           line-height: 50px !important;
         }
+        .vjs-button {
+          height: 50px !important;
+        }
         
         /* Custom Buttons */
         .vjs-back-button, .vjs-next-button {
@@ -277,6 +286,14 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
         }
         .vjs-back-button:hover, .vjs-next-button:hover {
           opacity: 1;
+        }
+
+        /* Hide unnecessary elements */
+        .vjs-remaining-time, .vjs-volume-panel {
+          display: flex !important;
+        }
+        .vjs-current-time, .vjs-time-divider, .vjs-duration-display {
+          display: none !important;
         }
 
         /* Subtitles Positioning */
@@ -290,12 +307,6 @@ const Player: React.FC<PlayerProps> = ({ option, className, getInstance, onBack,
             width: 60px !important;
             height: 60px !important;
             line-height: 60px !important;
-          }
-          .vjs-progress-control {
-            bottom: 50px !important;
-          }
-          .vjs-control-bar {
-            height: 50px !important;
           }
         }
       `}</style>
